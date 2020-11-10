@@ -6,7 +6,7 @@ int first_set_of_bit_per_sample[] = { 8, 16, 24, 32 };
 int second_set_of_bit_per_sample[] = { 16, 24 };
 int number_channels[] = { 1, 2 };
 int sampling_frequency[] = { 44100 };
-std::string first_set_of_audio_format[] = { "wav", "mp4", "mp3", "aac", "m4a", "wma" };
+std::string first_set_of_audio_format[] = { "wav", "mp4", "mp3", "aac", "m4a", "wma", "wmv", "mov", "avi" };
 std::string second_set_of_audio_format[] = { "flac" };
 std::pair<std::string, int> backend[] =
 {
