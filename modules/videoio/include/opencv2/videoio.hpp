@@ -695,6 +695,7 @@ public:
     If the previous call to VideoCapture constructor or VideoCapture::open() succeeded, the method returns
     true.
      */
+    CV_WRAP virtual bool open_audio(int index, int apiPreference = CAP_ANY);
     CV_WRAP virtual bool isOpened() const;
 
     /** @brief Closes video file or capturing device.

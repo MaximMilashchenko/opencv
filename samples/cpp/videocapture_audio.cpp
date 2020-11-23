@@ -17,24 +17,25 @@ int main(int, char**)
     //congigurate VideoCapture for video
     VideoCapture cap;
     // open selected camera using selected API
-    cap.open("file_name.format", apiID);
+    cap.open_audio(0, apiID);
     if (!cap.isOpened()) {
         cerr << "ERROR! Can't to open file\n";
         return -1;
     }
-    if(!cap.set(CAP_SWITCH_AUDIO_STREAM, true))// If second argument is true, than audio - on and video - off. If second argument is false, than video - on and audio - off
-    {
-        cerr << "ERROR! The format has not been switched\n";
-        return -1;
-    }
-    if(!cap.set(CAP_PROP_BPS, 16))// Use for formats using lossy compression. Set bit_per_sample for audio. The default will be the one set by the decoder
-    {
-        cerr << "ERROR! Parameter was not set\n";
-        return -1;
-    }  
+    //if(!cap.set(CAP_SWITCH_AUDIO_STREAM, true))// If second argument is true, than audio - on and video - off. If second argument is false, than video - on and audio - off
+    //{
+    //    cerr << "ERROR! The format has not been switched\n";
+    //    return -1;
+    //}
+    //if(!cap.set(CAP_PROP_BPS, 16))// Use for formats using lossy compression. Set bit_per_sample for audio. The default will be the one set by the decoder
+    //{
+    //    cerr << "ERROR! Parameter was not set\n";
+    //    return -1;
+    //}  
 
     //--- GRAB AND WRITE LOOP
     cout << "Start grabbing" << endl;
+    //char* data = new char[cbBuffer];
     for (;;)
     {
         //--- GRABBING VIDEO
@@ -49,7 +50,14 @@ int main(int, char**)
         if(!frame.empty())
         {
             data.push_back(frame);
-            cout << frame << endl;
+            /*std::fstream mm("wszBinFile.bin" , std::ios::app | std::ios::in | std::ios::out | std::ios::binary);
+            for(unsigned int i = 0; i < frame.rows; i++)
+            {
+                data[i] = frame.at<unsigned char>(i,0);
+            } 
+            mm.write(data, cbBuffer);
+            mm.close();*/
+            //cout << frame << endl;
         }
     }
     return 0;

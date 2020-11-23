@@ -213,9 +213,18 @@ struct MediaType
         res.setFramerate(30.0);
         return res;
     }
+    static MediaType createDefault_Audio()
+    {
+        MediaType res;
+        res.majorType = MFMediaType_Audio;
+        res.subType = MFAudioFormat_PCM;
+        res.bit_per_sample = 16;
+        res.nChannels = 2;
+        return res;
+    }
     inline bool isEmpty() const
     {
-        return width == 0 && height == 0;
+        return width == 0 && height == 0 && bit_per_sample == 0;
     }
     _ComPtr<IMFMediaType> createMediaType_Video() const
     {
@@ -622,6 +631,7 @@ public:
     CvCapture_MSMF();
     virtual ~CvCapture_MSMF();
     virtual bool open(int);
+    virtual bool open_audio(int);
     virtual bool open(const cv::String&);
     virtual void close();
     virtual double getProperty(int) const CV_OVERRIDE;
@@ -843,7 +853,7 @@ bool CvCapture_MSMF::configureOutput(MediaType newType, cv::uint32_t outFormat)
         bestMatch = formats.findBestVideoFormat(newType);
     else
         bestMatch = formats.findBestAudioFormat(newType);
-    if (bestMatch.second.isEmpty() && !(switch_mediatype))
+    if (bestMatch.second.isEmpty())// && !(switch_mediatype))
     {
         CV_LOG_DEBUG(NULL, "Can not find video stream with requested parameters");
         return false;
@@ -889,7 +899,7 @@ bool CvCapture_MSMF::configureOutput(MediaType newType, cv::uint32_t outFormat)
         }
     }
     // we select native format first and then our requested format (related issue #12822)
-    if (!newType.isEmpty() && !switch_mediatype) // camera input
+    if (!newType.isEmpty())// && !switch_mediatype) // camera input
         initStream(dwStreamIndex, nativeFormat);
     return initStream(dwStreamIndex, newFormat);
 }
@@ -900,7 +910,7 @@ bool CvCapture_MSMF::open(int index)
     if (index < 0)
         return false;
     DeviceList devices;
-    UINT32 count = devices.read();
+    UINT32 count = devices.read(MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE_VIDCAP_GUID);
     if (count == 0 || static_cast<UINT32>(index) > count)
     {
         CV_LOG_DEBUG(NULL, "Device " << index << " not found (total " << count << " devices)");
@@ -921,6 +931,41 @@ bool CvCapture_MSMF::open(int index)
     readCallback = cb;
     duration = 0;
     if (configureOutput(MediaType::createDefault(), outputFormat))
+    {
+        frameStep = captureFormat.getFrameStep();
+    }
+    return isOpen;
+}
+
+bool CvCapture_MSMF::open_audio(int index)
+{
+    std::cout << "rabotaet" << std::endl;
+    close();
+    if (index < 0)
+        return false;
+    DeviceList devices;
+    UINT32 count = devices.read(MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE_AUDCAP_GUID);
+    if (count == 0 || static_cast<UINT32>(index) > count)
+    {
+        CV_LOG_DEBUG(NULL, "Device " << index << " not found (total " << count << " devices)");
+        return false;
+    }
+    _ComPtr<IMFAttributes> attr = getDefaultSourceConfig();
+    _ComPtr<IMFSourceReaderCallback> cb = new SourceReaderCB();
+    attr->SetUnknown(MF_SOURCE_READER_ASYNC_CALLBACK, cb.Get());
+    _ComPtr<IMFMediaSource> src = devices.activateSource(index);
+    if (!src.Get() || FAILED(MFCreateSourceReaderFromMediaSource(src.Get(), attr.Get(), &videoFileSource)))
+    {
+        CV_LOG_DEBUG(NULL, "Failed to create source reader");
+        return false;
+    }
+
+    isOpen = true;
+    //switch_mediatype = true;
+    camid = index;
+    readCallback = cb;
+    duration = 0;
+    if (configureOutput(MediaType::createDefault_Audio(), outputFormat))
     {
         frameStep = captureFormat.getFrameStep();
     }
@@ -1173,7 +1218,8 @@ bool CvCapture_MSMF::retrieveFrame(int, cv::OutputArray frame)
                 cv::Mat(cursize/(captureFormat_audio.nChannels), captureFormat_audio.nChannels , CV_8S, ptr).copyTo(frame);
                 break;
             case 16:
-                cv::Mat(cursize/(2*captureFormat_audio.nChannels), captureFormat_audio.nChannels , CV_16S, ptr).copyTo(frame);
+                cv::Mat(cursize, captureFormat_audio.nChannels , CV_8U, ptr).copyTo(frame);
+                //cv::Mat(cursize/(2*captureFormat_audio.nChannels), captureFormat_audio.nChannels , CV_16S, ptr).copyTo(frame);
                 break;
             case 24:
                 cv::Mat(cursize/(captureFormat_audio.nChannels), captureFormat_audio.nChannels , CV_8U, ptr).copyTo(frame);
@@ -1521,12 +1567,27 @@ bool CvCapture_MSMF::setProperty( int property_id, double value )
             if(value == 1)
             {
                 switch_mediatype = true;
-                return configureOutput(MediaType(), outputFormat);
+                if(camid)
+                {
+                    return configureOutput(MediaType::createDefault_Audio(), outputFormat);
+                }
+                else
+                {
+                    return configureOutput(MediaType(), outputFormat);
+                }
+                
             }
             else if(value == 0)
             {
                 switch_mediatype = false;
-                return configureOutput(MediaType(), outputFormat);
+                if(camid)
+                {
+                    return configureOutput(MediaType::createDefault_Audio(), outputFormat);
+                }
+                else
+                {
+                    return configureOutput(MediaType(), outputFormat);
+                }
             }     
             else 
                 return false;
@@ -1534,7 +1595,7 @@ bool CvCapture_MSMF::setProperty( int property_id, double value )
             if(value == 8 || value == 16 || value == 24 || value == 32)
             {
                 bit_per_sample = static_cast<int>(value);
-                return configureOutput(MediaType(), outputFormat);
+                return configureOutput(MediaType(), outputFormat);       
             }
             else
             {
