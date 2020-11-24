@@ -677,7 +677,7 @@ public:
 
     The method first calls VideoCapture::release to close the already opened file or camera.
      */
-    CV_WRAP virtual bool open(const String& filename, int apiPreference = CAP_ANY);
+    CV_WRAP virtual bool open(const String& filename, int apiPreference = CAP_ANY, bool enable_audio = false);
 
     /** @brief  Opens a camera for video capturing
 
@@ -688,14 +688,13 @@ public:
 
     The method first calls VideoCapture::release to close the already opened file or camera.
     */
-    CV_WRAP virtual bool open(int index, int apiPreference = CAP_ANY);
+    CV_WRAP virtual bool open(int index, int apiPreference = CAP_ANY, bool enable_audio = false);
 
     /** @brief Returns true if video capturing has been initialized already.
 
     If the previous call to VideoCapture constructor or VideoCapture::open() succeeded, the method returns
     true.
      */
-    CV_WRAP virtual bool open_audio(int index, int apiPreference = CAP_ANY);
     CV_WRAP virtual bool isOpened() const;
 
     /** @brief Closes video file or capturing device.

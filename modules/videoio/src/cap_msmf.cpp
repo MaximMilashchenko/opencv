@@ -553,7 +553,7 @@ public:
         }
         return best;
     }
-    std::pair<MediaID, MediaType> findBestAudioFormat(const MediaType& newType)
+    std::pair<MediaID, MediaType> findBestAudioFormat(const MediaType&)
     {
         std::pair<MediaID, MediaType> best;
         std::map<MediaID, MediaType>::const_iterator i = formats.begin();
@@ -630,9 +630,8 @@ public:
     } MSMFCapture_Mode;
     CvCapture_MSMF();
     virtual ~CvCapture_MSMF();
-    virtual bool open(int);
-    virtual bool open_audio(int);
-    virtual bool open(const cv::String&);
+    virtual bool open(int, bool = false );
+    virtual bool open(const cv::String&, bool = false);
     virtual void close();
     virtual double getProperty(int) const CV_OVERRIDE;
     virtual bool setProperty(int, double) CV_OVERRIDE;
@@ -904,13 +903,13 @@ bool CvCapture_MSMF::configureOutput(MediaType newType, cv::uint32_t outFormat)
     return initStream(dwStreamIndex, newFormat);
 }
 
-bool CvCapture_MSMF::open(int index)
+bool CvCapture_MSMF::open(int index, bool enable_audio)
 {
     close();
     if (index < 0)
         return false;
     DeviceList devices;
-    UINT32 count = devices.read(MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE_VIDCAP_GUID);
+    UINT32 count = devices.read((enable_audio) ? MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE_AUDCAP_GUID : MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE_VIDCAP_GUID);
     if (count == 0 || static_cast<UINT32>(index) > count)
     {
         CV_LOG_DEBUG(NULL, "Device " << index << " not found (total " << count << " devices)");
@@ -925,54 +924,19 @@ bool CvCapture_MSMF::open(int index)
         CV_LOG_DEBUG(NULL, "Failed to create source reader");
         return false;
     }
-
+    if(enable_audio) switch_mediatype = true;
     isOpen = true;
     camid = index;
     readCallback = cb;
     duration = 0;
-    if (configureOutput(MediaType::createDefault(), outputFormat))
+    if (configureOutput((enable_audio) ? MediaType::createDefault_Audio() : MediaType::createDefault(), outputFormat))
     {
         frameStep = captureFormat.getFrameStep();
     }
     return isOpen;
 }
 
-bool CvCapture_MSMF::open_audio(int index)
-{
-    std::cout << "rabotaet" << std::endl;
-    close();
-    if (index < 0)
-        return false;
-    DeviceList devices;
-    UINT32 count = devices.read(MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE_AUDCAP_GUID);
-    if (count == 0 || static_cast<UINT32>(index) > count)
-    {
-        CV_LOG_DEBUG(NULL, "Device " << index << " not found (total " << count << " devices)");
-        return false;
-    }
-    _ComPtr<IMFAttributes> attr = getDefaultSourceConfig();
-    _ComPtr<IMFSourceReaderCallback> cb = new SourceReaderCB();
-    attr->SetUnknown(MF_SOURCE_READER_ASYNC_CALLBACK, cb.Get());
-    _ComPtr<IMFMediaSource> src = devices.activateSource(index);
-    if (!src.Get() || FAILED(MFCreateSourceReaderFromMediaSource(src.Get(), attr.Get(), &videoFileSource)))
-    {
-        CV_LOG_DEBUG(NULL, "Failed to create source reader");
-        return false;
-    }
-
-    isOpen = true;
-    //switch_mediatype = true;
-    camid = index;
-    readCallback = cb;
-    duration = 0;
-    if (configureOutput(MediaType::createDefault_Audio(), outputFormat))
-    {
-        frameStep = captureFormat.getFrameStep();
-    }
-    return isOpen;
-}
-
-bool CvCapture_MSMF::open(const cv::String& _filename)
+bool CvCapture_MSMF::open(const cv::String& _filename, bool )
 {
     close();
     if (_filename.empty())
@@ -1608,24 +1572,24 @@ bool CvCapture_MSMF::setProperty( int property_id, double value )
     return false;
 }
 
-cv::Ptr<cv::IVideoCapture> cv::cvCreateCapture_MSMF( int index )
+cv::Ptr<cv::IVideoCapture> cv::cvCreateCapture_MSMF(int index, bool enable_audio)
 {
     cv::Ptr<CvCapture_MSMF> capture = cv::makePtr<CvCapture_MSMF>();
     if (capture)
     {
-        capture->open(index);
+        capture->open(index, enable_audio);
         if (capture->isOpened())
             return capture;
     }
     return cv::Ptr<cv::IVideoCapture>();
 }
 
-cv::Ptr<cv::IVideoCapture> cv::cvCreateCapture_MSMF (const cv::String& filename)
+cv::Ptr<cv::IVideoCapture> cv::cvCreateCapture_MSMF (const cv::String& filename, bool enable_audio)
 {
     cv::Ptr<CvCapture_MSMF> capture = cv::makePtr<CvCapture_MSMF>();
     if (capture)
     {
-        capture->open(filename);
+        capture->open(filename, enable_audio);
         if (capture->isOpened())
             return capture;
     }

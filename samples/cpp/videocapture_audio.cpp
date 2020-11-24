@@ -17,7 +17,7 @@ int main(int, char**)
     //congigurate VideoCapture for video
     VideoCapture cap;
     // open selected camera using selected API
-    cap.open_audio(0, apiID);
+    cap.open(0, apiID, true);
     if (!cap.isOpened()) {
         cerr << "ERROR! Can't to open file\n";
         return -1;
@@ -57,7 +57,7 @@ int main(int, char**)
             } 
             mm.write(data, cbBuffer);
             mm.close();*/
-            //cout << frame << endl;
+            cout << frame << endl;
         }
     }
     return 0;

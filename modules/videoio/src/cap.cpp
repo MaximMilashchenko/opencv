@@ -87,7 +87,7 @@ VideoCapture::~VideoCapture()
     icap.release();
 }
 
-bool VideoCapture::open(const String& filename, int apiPreference)
+bool VideoCapture::open(const String& filename, int apiPreference, bool enable_audio)
 {
     CV_TRACE_FUNCTION();
 
@@ -112,7 +112,7 @@ bool VideoCapture::open(const String& filename, int apiPreference)
             {
                 try
                 {
-                    icap = backend->createCapture(filename);
+                    icap = backend->createCapture(filename, enable_audio);
                     if (!icap.empty())
                     {
                         CV_CAPTURE_LOG_DEBUG(NULL,
@@ -180,7 +180,7 @@ bool VideoCapture::open(const String& filename, int apiPreference)
     return false;
 }
 
-bool VideoCapture::open(int cameraNum, int apiPreference)
+bool VideoCapture::open(int cameraNum, int apiPreference, bool enable_audio)
 {
     CV_TRACE_FUNCTION();
 
@@ -216,111 +216,7 @@ bool VideoCapture::open(int cameraNum, int apiPreference)
             {
                 try
                 {
-                    icap = backend->createCapture(cameraNum);
-                    if (!icap.empty())
-                    {
-                        CV_CAPTURE_LOG_DEBUG(NULL,
-                                             cv::format("VIDEOIO(%s): created, isOpened=%d",
-                                                        info.name, icap->isOpened()));
-                        if (icap->isOpened())
-                        {
-                            return true;
-                        }
-                        icap.release();
-                    }
-                    else
-                    {
-                        CV_CAPTURE_LOG_DEBUG(NULL,
-                                             cv::format("VIDEOIO(%s): can't create capture",
-                                                        info.name));
-                    }
-                }
-                catch (const cv::Exception& e)
-                {
-                    if (throwOnFail && apiPreference != CAP_ANY)
-                    {
-                        throw;
-                    }
-                    CV_LOG_ERROR(NULL,
-                                 cv::format("VIDEOIO(%s): raised OpenCV exception:\n\n%s\n",
-                                            info.name, e.what()));
-                }
-                catch (const std::exception& e)
-                {
-                    if (throwOnFail && apiPreference != CAP_ANY)
-                    {
-                        throw;
-                    }
-                    CV_LOG_ERROR(NULL, cv::format("VIDEOIO(%s): raised C++ exception:\n\n%s\n",
-                                                  info.name, e.what()));
-                }
-                catch (...)
-                {
-                    if (throwOnFail && apiPreference != CAP_ANY)
-                    {
-                        throw;
-                    }
-                    CV_LOG_ERROR(NULL,
-                                 cv::format("VIDEOIO(%s): raised unknown C++ exception!\n\n",
-                                            info.name));
-                }
-            }
-            else
-            {
-                CV_CAPTURE_LOG_DEBUG(NULL,
-                                     cv::format("VIDEOIO(%s): backend is not available "
-                                                "(plugin is missing, or can't be loaded due "
-                                                "dependencies or it is not compatible)",
-                                                 info.name));
-            }
-        }
-    }
-
-    if (throwOnFail)
-    {
-        CV_Error_(Error::StsError, ("could not open camera %d", cameraNum));
-    }
-
-    return false;
-}
-
-bool VideoCapture::open_audio(int cameraNum, int apiPreference)
-{
-    CV_TRACE_FUNCTION();
-
-    if (isOpened())
-    {
-        release();
-    }
-
-    if (apiPreference == CAP_ANY)
-    {
-        // interpret preferred interface (0 = autodetect)
-        int backendID = (cameraNum / 100) * 100;
-        if (backendID)
-        {
-            cameraNum %= 100;
-            apiPreference = backendID;
-        }
-    }
-
-    const std::vector<VideoBackendInfo> backends = cv::videoio_registry::getAvailableBackends_CaptureByIndex();
-    for (size_t i = 0; i < backends.size(); i++)
-    {
-        const VideoBackendInfo& info = backends[i];
-        if (apiPreference == CAP_ANY || apiPreference == info.id)
-        {
-            CV_CAPTURE_LOG_DEBUG(NULL,
-                                 cv::format("VIDEOIO(%s): trying capture cameraNum=%d ...",
-                                            info.name, cameraNum));
-
-            CV_Assert(!info.backendFactory.empty());
-            const Ptr<IBackend> backend = info.backendFactory->getBackend();
-            if (!backend.empty())
-            {
-                try
-                {
-                    icap = backend->createCapture(cameraNum);
+                    icap = backend->createCapture(cameraNum, enable_audio);
                     if (!icap.empty())
                     {
                         CV_CAPTURE_LOG_DEBUG(NULL,

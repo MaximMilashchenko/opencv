@@ -241,8 +241,8 @@ public:
         }
     }
 
-    Ptr<IVideoCapture> createCapture(int camera) const CV_OVERRIDE;
-    Ptr<IVideoCapture> createCapture(const std::string &filename) const CV_OVERRIDE;
+    Ptr<IVideoCapture> createCapture(int camera, bool = false) const CV_OVERRIDE;
+    Ptr<IVideoCapture> createCapture(const std::string &filename, bool = false) const CV_OVERRIDE;
     Ptr<IVideoWriter> createWriter(const std::string& filename, int fourcc, double fps,
                                    const cv::Size& sz, const VideoWriterParameters& params) const CV_OVERRIDE;
 };
@@ -572,7 +572,7 @@ public:
 };
 
 
-Ptr<IVideoCapture> PluginBackend::createCapture(int camera) const
+Ptr<IVideoCapture> PluginBackend::createCapture(int camera, bool) const
 {
     try
     {
@@ -586,7 +586,7 @@ Ptr<IVideoCapture> PluginBackend::createCapture(int camera) const
     return Ptr<IVideoCapture>();
 }
 
-Ptr<IVideoCapture> PluginBackend::createCapture(const std::string &filename) const
+Ptr<IVideoCapture> PluginBackend::createCapture(const std::string &filename, bool) const
 {
     try
     {
