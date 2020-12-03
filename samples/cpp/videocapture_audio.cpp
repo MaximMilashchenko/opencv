@@ -3,6 +3,7 @@
 #include <opencv2/highgui.hpp>
 #include <iostream>
 #include <stdio.h>
+#include <fstream>
 
 using namespace cv;
 using namespace std;
@@ -27,15 +28,15 @@ int main(int, char**)
     //    cerr << "ERROR! The format has not been switched\n";
     //    return -1;
     //}
-    //if(!cap.set(CAP_PROP_BPS, 16))// Use for formats using lossy compression. Set bit_per_sample for audio. The default will be the one set by the decoder
-    //{
-    //    cerr << "ERROR! Parameter was not set\n";
-    //    return -1;
-    //}  
+    if(!cap.set(CAP_PROP_BPS, 16))// Use for formats using lossy compression. Set bit_per_sample for audio. The default will be the one set by the decoder
+    {
+        cerr << "ERROR! Parameter was not set\n";
+        return -1;
+    }  
 
     //--- GRAB AND WRITE LOOP
     cout << "Start grabbing" << endl;
-    //char* data = new char[cbBuffer];
+    //char* data1 = NULL; 
     for (;;)
     {
         //--- GRABBING VIDEO
@@ -43,21 +44,23 @@ int main(int, char**)
         cap.read(frame);
         // check if we succeeded
         if (frame.empty()) {
-            cerr << "ERROR! blank frame grabbed\n";
-            break;
+            //cerr << "ERROR! blank frame grabbed\n";
+            //break;
         }
         // write audio PCM in MAT
         if(!frame.empty())
         {
+
             data.push_back(frame);
-            /*std::fstream mm("wszBinFile.bin" , std::ios::app | std::ios::in | std::ios::out | std::ios::binary);
+            /*data1 = new char[frame.rows];
+            std::fstream mm("wszBinFile.bin" , std::ios::app | std::ios::in | std::ios::out | std::ios::binary);
             for(unsigned int i = 0; i < frame.rows; i++)
             {
-                data[i] = frame.at<unsigned char>(i,0);
+                data1[i] = frame.at<unsigned char>(i,0);
             } 
-            mm.write(data, cbBuffer);
+            mm.write(data1, frame.rows);
             mm.close();*/
-            cout << frame << endl;
+            //cout << frame << endl;
         }
     }
     return 0;

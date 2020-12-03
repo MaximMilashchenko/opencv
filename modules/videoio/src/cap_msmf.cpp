@@ -396,6 +396,7 @@ public:
 
     STDMETHODIMP OnReadSample(HRESULT hrStatus, DWORD dwStreamIndex, DWORD dwStreamFlags, LONGLONG llTimestamp, IMFSample *pSample) CV_OVERRIDE
     {
+        std::cout << "OnReadSample" << std::endl;
         CV_UNUSED(llTimestamp);
 
         HRESULT hr = 0;
@@ -417,7 +418,6 @@ public:
         {
             CV_LOG_WARNING(NULL, "videoio(MSMF): OnReadSample() is called with error status: " << hrStatus);
         }
-
         if (MF_SOURCE_READERF_ENDOFSTREAM & dwStreamFlags)
         {
             // Reached the end of the stream.
@@ -426,7 +426,7 @@ public:
         m_hrStatus = hrStatus;
 
         if (FAILED(hr = m_reader->ReadSample(dwStreamIndex, 0, NULL, NULL, NULL, NULL)))
-        {
+        {          
             CV_LOG_WARNING(NULL, "videoio(MSMF): async ReadSample() call is failed with error status: " << hr);
             m_bEOS = true;
         }
@@ -462,15 +462,17 @@ public:
         }
 
         pbEOS = m_bEOS;
-        if (!pbEOS)
+        /*if (!pbEOS)
         {
+            std::cout << "Wait" << std::endl;
             cv::AutoLock lock(m_mutex);
             videoSample = m_lastSample;
             CV_Assert(videoSample);
             m_lastSample.Release();
             ResetEvent(m_hEvent);  // event is auto-reset, but we need this forced reset due time gap between wait() and mutex hold.
-        }
-
+        }*/
+        std::cout << "Wait" << std::endl;
+        ResetEvent(m_hEvent);
         return m_hrStatus;
     }
 private:
@@ -997,6 +999,25 @@ bool CvCapture_MSMF::grabFrame()
             CV_LOG_WARNING(NULL, "videoio(MSMF): can't grab frame. Error: " << hr);
             return false;
         }
+        /*std::vector<unsigned char> buffer;
+        IMFMediaBuffer *pBuffer = NULL;
+        BYTE *pAudioData = NULL;
+        DWORD cbBuffer = 0;
+        hr = videoSample->ConvertToContiguousBuffer(&pBuffer);//ловим указатель на объект буфера
+        hr = pBuffer -> Lock(&pAudioData, NULL, &cbBuffer);//получаем указатель на буферную память
+        char* data = new char[cbBuffer];
+        for(unsigned int i = 0; i < cbBuffer; i++)
+        {
+            buffer.push_back(*(i + pAudioData));
+            data[i] = *(pAudioData+i);
+            //cout << *(i + pAudioData) << endl;
+        }
+        std::fstream mm("C:\\Users\\mmilashc\\Desktop\\bin\\wszBinFile.bin" , std::ios::app | std::ios::in | std::ios::out | std::ios::binary); 
+        mm.write(data, cbBuffer);
+        mm.close();
+        hr = pBuffer->Unlock();
+        pAudioData = NULL;
+        pBuffer = NULL;*/
         if (bEOS)
         {
             CV_LOG_WARNING(NULL, "videoio(MSMF): EOS signal. Capture stream is lost");
