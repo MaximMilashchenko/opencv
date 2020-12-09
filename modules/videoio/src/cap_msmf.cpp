@@ -462,17 +462,15 @@ public:
         }
 
         pbEOS = m_bEOS;
-        /*if (!pbEOS)
+        if (!pbEOS)
         {
             std::cout << "Wait" << std::endl;
             cv::AutoLock lock(m_mutex);
-            videoSample = m_lastSample;
-            CV_Assert(videoSample);
-            m_lastSample.Release();
+            //videoSample = m_lastSample;
+            //CV_Assert(videoSample);
+            //m_lastSample.Release();
             ResetEvent(m_hEvent);  // event is auto-reset, but we need this forced reset due time gap between wait() and mutex hold.
-        }*/
-        std::cout << "Wait" << std::endl;
-        ResetEvent(m_hEvent);
+        }
         return m_hrStatus;
     }
 private:
@@ -901,7 +899,10 @@ bool CvCapture_MSMF::configureOutput(MediaType newType, cv::uint32_t outFormat)
     }
     // we select native format first and then our requested format (related issue #12822)
     if (!newType.isEmpty())// && !switch_mediatype) // camera input
+    {
+        std::cout << "i use right!" << std::endl;
         initStream(dwStreamIndex, nativeFormat);
+    }
     return initStream(dwStreamIndex, newFormat);
 }
 
@@ -994,10 +995,10 @@ bool CvCapture_MSMF::grabFrame()
             }
         }
         BOOL bEOS = false;
-        if (FAILED(hr = reader->Wait(10000, videoSample, bEOS)))  // 10 sec
+        if (FAILED(hr = reader->Wait((!switch_mediatype)? 10000 : INFINITE, videoSample, bEOS)))  // 10 sec
         {
             CV_LOG_WARNING(NULL, "videoio(MSMF): can't grab frame. Error: " << hr);
-            return false;
+            return false; 
         }
         /*std::vector<unsigned char> buffer;
         IMFMediaBuffer *pBuffer = NULL;
