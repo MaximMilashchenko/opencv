@@ -154,6 +154,7 @@ template <typename T> inline T absDiff(T a, T b) { return a >= b ? a - b : b - a
 // Structure for collecting info about types of video which are supported by current video device
 struct MediaType
 {   
+    //video param
     UINT32 width;
     UINT32 height;
     INT32 stride; // stride is negative if image is bottom-up
@@ -164,8 +165,11 @@ struct MediaType
     UINT32 aspectRatioDenom;
     UINT32 sampleSize;
     UINT32 interlaceMode;
+    //audio param
     UINT32 bit_per_sample;
     UINT32 nChannels;
+    UINT32 nAvgBytesPerSec;
+
     GUID majorType; // video or audio
     GUID subType; // fourCC
     _ComPtr<IMFMediaType> Type;
@@ -180,6 +184,7 @@ struct MediaType
         interlaceMode(0),
         bit_per_sample(0),
         nChannels(0),
+        nAvgBytesPerSec(0),
         majorType({ 0 }),//MFMediaType_Video
         subType({ 0 })
     {
@@ -191,8 +196,9 @@ struct MediaType
             {
                 pType->GetUINT32(MF_MT_AUDIO_BITS_PER_SAMPLE, &bit_per_sample);
                 pType->GetUINT32(MF_MT_AUDIO_NUM_CHANNELS, &nChannels);
+                pType->GetUINT32(MF_MT_AUDIO_AVG_BYTES_PER_SECOND, &nAvgBytesPerSec);
             }
-            else 
+            else if (majorType == MFMediaType_Video)
             {
                 MFGetAttributeSize(pType, MF_MT_FRAME_SIZE, &width, &height);
                 pType->GetUINT32(MF_MT_DEFAULT_STRIDE, (UINT32*)&stride); // value is stored as UINT32 but should be casted to INT3)
@@ -224,7 +230,16 @@ struct MediaType
     }
     inline bool isEmpty() const
     {
-        return width == 0 && height == 0 && bit_per_sample == 0;
+        //?
+        if(width != 0 && height != 0)
+            return width == 0 && height == 0;
+        else if(nAvgBytesPerSec != 0)
+            return nAvgBytesPerSec == 0;
+
+        //if(majorType == MFMediaType_Video)
+            //5return width == 0 && height == 0;
+        //else if(majorType == MFMediaType_Audio)
+                //return nAvgBytesPerSec == 0;
     }
     _ComPtr<IMFMediaType> createMediaType_Video() const
     {
@@ -260,6 +275,8 @@ struct MediaType
             res->SetUINT32(MF_MT_AUDIO_BITS_PER_SAMPLE, bit_per_sample);
         if (nChannels != 0)
             res->SetUINT32(MF_MT_AUDIO_NUM_CHANNELS, nChannels);
+        //if(nAvgBytesPerSec != 0)
+            //res->SetUINT32(MF_MT_AUDIO_AVG_BYTES_PER_SECOND, nAvgBytesPerSec);
         if (majorType != GUID())
             res->SetGUID(MF_MT_MAJOR_TYPE, majorType);
         if (subType != GUID())
@@ -289,23 +306,31 @@ struct MediaType
     // check if 'this' is better than 'other' comparing to reference
     bool isBetterThan(const MediaType& other, const MediaType& ref) const
     {
-        const unsigned long thisDiff = resolutionDiff(ref);
-        const unsigned long otherDiff = other.resolutionDiff(ref);
-        if (thisDiff < otherDiff)
-            return true;
-        if (thisDiff == otherDiff)
+        if(majorType == MFMediaType_Video)
         {
-            if (width > other.width)
+            const unsigned long thisDiff = resolutionDiff(ref);
+            const unsigned long otherDiff = other.resolutionDiff(ref);
+            if (thisDiff < otherDiff)
                 return true;
-            if (width == other.width && height > other.height)
-                return true;
-            if (width == other.width && height == other.height)
+            if (thisDiff == otherDiff)
             {
-                const double thisRateDiff = absDiff(getFramerate(), ref.getFramerate());
-                const double otherRateDiff = absDiff(other.getFramerate(), ref.getFramerate());
-                if (thisRateDiff < otherRateDiff)
+                if (width > other.width)
                     return true;
+                if (width == other.width && height > other.height)
+                    return true;
+                if (width == other.width && height == other.height)
+                {
+                    const double thisRateDiff = absDiff(getFramerate(), ref.getFramerate());
+                    const double otherRateDiff = absDiff(other.getFramerate(), ref.getFramerate());
+                    if (thisRateDiff < otherRateDiff)
+                        return true;
+                }
             }
+        }
+        else if(majorType == MFMediaType_Audio)
+        {
+            if (other.nAvgBytesPerSec < ref.nAvgBytesPerSec)
+                return true;
         }
         return false;
     }
@@ -396,7 +421,6 @@ public:
 
     STDMETHODIMP OnReadSample(HRESULT hrStatus, DWORD dwStreamIndex, DWORD dwStreamFlags, LONGLONG llTimestamp, IMFSample *pSample) CV_OVERRIDE
     {
-        std::cout << "OnReadSample" << std::endl;
         CV_UNUSED(llTimestamp);
 
         HRESULT hr = 0;
@@ -464,11 +488,10 @@ public:
         pbEOS = m_bEOS;
         if (!pbEOS)
         {
-            std::cout << "Wait" << std::endl;
             cv::AutoLock lock(m_mutex);
-            //videoSample = m_lastSample;
-            //CV_Assert(videoSample);
-            //m_lastSample.Release();
+            videoSample = m_lastSample;
+            CV_Assert(videoSample);
+            m_lastSample.Release();
             ResetEvent(m_hEvent);  // event is auto-reset, but we need this forced reset due time gap between wait() and mutex hold.
         }
         return m_hrStatus;
@@ -553,7 +576,7 @@ public:
         }
         return best;
     }
-    std::pair<MediaID, MediaType> findBestAudioFormat(const MediaType&)
+    std::pair<MediaID, MediaType> findBestAudioFormat(const MediaType& newType)
     {
         std::pair<MediaID, MediaType> best;
         std::map<MediaID, MediaType>::const_iterator i = formats.begin();
@@ -561,7 +584,12 @@ public:
         {
             if (i->second.majorType == MFMediaType_Audio)
             {
-                best = *i;
+                std::cout << " " << i->second.nAvgBytesPerSec << std::endl;
+                if (best.second.isEmpty() || i->second.isBetterThan(best.second, newType))
+                {
+                    best = *i;
+                }
+                //best = *i;
             }
         }
         return best;
@@ -852,7 +880,7 @@ bool CvCapture_MSMF::configureOutput(MediaType newType, cv::uint32_t outFormat)
         bestMatch = formats.findBestVideoFormat(newType);
     else
         bestMatch = formats.findBestAudioFormat(newType);
-    if (bestMatch.second.isEmpty())// && !(switch_mediatype))
+    if (bestMatch.second.isEmpty())// && !switch_mediatype)
     {
         CV_LOG_DEBUG(NULL, "Can not find video stream with requested parameters");
         return false;
@@ -899,10 +927,7 @@ bool CvCapture_MSMF::configureOutput(MediaType newType, cv::uint32_t outFormat)
     }
     // we select native format first and then our requested format (related issue #12822)
     if (!newType.isEmpty())// && !switch_mediatype) // camera input
-    {
-        std::cout << "i use right!" << std::endl;
         initStream(dwStreamIndex, nativeFormat);
-    }
     return initStream(dwStreamIndex, newFormat);
 }
 
@@ -927,7 +952,7 @@ bool CvCapture_MSMF::open(int index, bool enable_audio)
         CV_LOG_DEBUG(NULL, "Failed to create source reader");
         return false;
     }
-    if(enable_audio) switch_mediatype = true;
+    switch_mediatype = enable_audio;
     isOpen = true;
     camid = index;
     readCallback = cb;
@@ -939,7 +964,7 @@ bool CvCapture_MSMF::open(int index, bool enable_audio)
     return isOpen;
 }
 
-bool CvCapture_MSMF::open(const cv::String& _filename, bool )
+bool CvCapture_MSMF::open(const cv::String& _filename, bool enable_audio)
 {
     close();
     if (_filename.empty())
@@ -952,6 +977,7 @@ bool CvCapture_MSMF::open(const cv::String& _filename, bool )
     {
         isOpen = true;
         sampleTime = 0;
+        //switch_mediatype = enable_audio;
         if (configureOutput(MediaType(), outputFormat))
         {           
             filename = _filename;
@@ -1000,25 +1026,6 @@ bool CvCapture_MSMF::grabFrame()
             CV_LOG_WARNING(NULL, "videoio(MSMF): can't grab frame. Error: " << hr);
             return false; 
         }
-        /*std::vector<unsigned char> buffer;
-        IMFMediaBuffer *pBuffer = NULL;
-        BYTE *pAudioData = NULL;
-        DWORD cbBuffer = 0;
-        hr = videoSample->ConvertToContiguousBuffer(&pBuffer);//ловим указатель на объект буфера
-        hr = pBuffer -> Lock(&pAudioData, NULL, &cbBuffer);//получаем указатель на буферную память
-        char* data = new char[cbBuffer];
-        for(unsigned int i = 0; i < cbBuffer; i++)
-        {
-            buffer.push_back(*(i + pAudioData));
-            data[i] = *(pAudioData+i);
-            //cout << *(i + pAudioData) << endl;
-        }
-        std::fstream mm("C:\\Users\\mmilashc\\Desktop\\bin\\wszBinFile.bin" , std::ios::app | std::ios::in | std::ios::out | std::ios::binary); 
-        mm.write(data, cbBuffer);
-        mm.close();
-        hr = pBuffer->Unlock();
-        pAudioData = NULL;
-        pBuffer = NULL;*/
         if (bEOS)
         {
             CV_LOG_WARNING(NULL, "videoio(MSMF): EOS signal. Capture stream is lost");
@@ -1194,7 +1201,7 @@ bool CvCapture_MSMF::retrieveFrame(int, cv::OutputArray frame)
             }
         }
         else
-        {      
+        {   
             switch(captureFormat_audio.bit_per_sample)
             {
             case 0:
@@ -1204,8 +1211,8 @@ bool CvCapture_MSMF::retrieveFrame(int, cv::OutputArray frame)
                 cv::Mat(cursize/(captureFormat_audio.nChannels), captureFormat_audio.nChannels , CV_8S, ptr).copyTo(frame);
                 break;
             case 16:
-                cv::Mat(cursize, captureFormat_audio.nChannels , CV_8U, ptr).copyTo(frame);
-                //cv::Mat(cursize/(2*captureFormat_audio.nChannels), captureFormat_audio.nChannels , CV_16S, ptr).copyTo(frame);
+                //cv::Mat(cursize, 1 , CV_8U, ptr).copyTo(frame);
+                cv::Mat(cursize/(2*captureFormat_audio.nChannels), captureFormat_audio.nChannels , CV_16S, ptr).copyTo(frame);
                 break;
             case 24:
                 cv::Mat(cursize/(captureFormat_audio.nChannels), captureFormat_audio.nChannels , CV_8U, ptr).copyTo(frame);
@@ -1553,6 +1560,19 @@ bool CvCapture_MSMF::setProperty( int property_id, double value )
             if(value == 1)
             {
                 switch_mediatype = true;
+                return configureOutput(MediaType(), outputFormat);
+            }
+            else if(value == 0)
+            {
+                switch_mediatype = false;
+                return configureOutput(MediaType(), outputFormat);
+            }     
+            else 
+                return false;
+        /*
+            if(value == 1)
+            {
+                switch_mediatype = true;
                 if(camid)
                 {
                     return configureOutput(MediaType::createDefault_Audio(), outputFormat);
@@ -1576,7 +1596,7 @@ bool CvCapture_MSMF::setProperty( int property_id, double value )
                 }
             }     
             else 
-                return false;
+                return false;*/
         case CV_CAP_PROP_BPS:
             if(value == 8 || value == 16 || value == 24 || value == 32)
             {
