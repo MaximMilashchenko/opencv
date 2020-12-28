@@ -27,6 +27,7 @@ protected:
     const std::string root;
     const std::string audio_name;
     std::vector<unsigned char> bin;
+    std::vector<int> params;
 
     Mat test_data_known;
     Mat test_data_received;
@@ -41,7 +42,8 @@ public:
     audio_format(get<3>(GetParam())), 
     backend(get<4>(GetParam())),
     root("audio/"+ audio_format + "/"),
-    audio_name("test_" + std::to_string(bit_per_sample) + "bit_" + std::to_string(number_channels) + "channels_" + std::to_string(sampling_frequency) + "hz.") 
+    audio_name("test_" + std::to_string(bit_per_sample) + "bit_" + std::to_string(number_channels) + "channels_" + std::to_string(sampling_frequency) + "hz."),
+    params({ CAP_PROP_AUDIO_ENABLE , static_cast<int>(1) }) 
     { 
         configuration_videocapture();
         get_test_data_from_bin_file();
@@ -51,8 +53,8 @@ public:
 private:
     void configuration_videocapture()
     {
-        ASSERT_TRUE(cap.open(findDataFile(root + audio_name + audio_format), backend.second));
-        ASSERT_TRUE(cap.set(CAP_SWITCH_AUDIO_STREAM,1));
+        ASSERT_TRUE(cap.open(findDataFile(root + audio_name + audio_format), backend.second, params));
+        //ASSERT_TRUE(cap.set(CAP_PROP_AUDIO_ENABLE ,1));
         ASSERT_TRUE(cap.set(CAP_PROP_BPS, bit_per_sample));
     }
     void get_test_data_from_bin_file()

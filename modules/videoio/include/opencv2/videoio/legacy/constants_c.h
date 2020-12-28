@@ -316,7 +316,7 @@ enum
     CV_CAP_PROP_XI_SENSOR_FEATURE_VALUE                         = 586, // Allows access to sensor feature value currently selected by XI_PRM_SENSOR_FEATURE_SELECTOR.
 
     //Properties of audio VideoIO
-    CV_CAP_SWITCH_AUDIO_STREAM = 1000, // Select audio or video
+    CV_CAP_PROP_AUDIO_ENABLE  = 1000, // Select audio or video
     CV_CAP_PROP_BPS            = 1001, // Change bit_per_sample parametr for audio
 
     // Properties for Android cameras

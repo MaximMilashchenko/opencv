@@ -19,12 +19,14 @@ int main(int, char**)
     //congigurate VideoCapture for video
     VideoCapture cap;
     // open selected camera using selected API
-    cap.open(0, apiID, true);
+    std::vector<int> params { CAP_PROP_AUDIO_ENABLE , static_cast<int>(1) };
+    cap.open(0, apiID, params);
+    //ASSERT_TRUE(cap.set(CAP_PROP_BPS, 0));
     if (!cap.isOpened()) {
         cerr << "ERROR! Can't to open file\n";
         return -1;
     }
-    /*if(!cap.set(CAP_SWITCH_AUDIO_STREAM, true))// If second argument is true, than audio - on and video - off. If second argument is false, than video - on and audio - off
+    /*if(!cap.set(CAP_PROP_AUDIO_ENABLE , true))// If second argument is true, than audio - on and video - off. If second argument is false, than video - on and audio - off
     {
         cerr << "ERROR! The format has not been switched\n";
         return -1;

@@ -338,7 +338,7 @@ bool CvCapture_Images::isOpened() const
     return !filename_pattern.empty();
 }
 
-Ptr<IVideoCapture> create_Images_capture(const std::string &filename, bool enable_audio)
+Ptr<IVideoCapture> create_Images_capture(const std::string &filename, const VideoWriterParameters& params)
 {
     return makePtr<CvCapture_Images>(filename);
 }

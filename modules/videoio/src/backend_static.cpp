@@ -22,16 +22,16 @@ public:
     }
     ~StaticBackend() CV_OVERRIDE {}
 
-    Ptr<IVideoCapture> createCapture(int camera, bool enable_audio) const CV_OVERRIDE
+    Ptr<IVideoCapture> createCapture(int camera, const VideoWriterParameters& params) const CV_OVERRIDE
     {
         if (fn_createCaptureCamera_)
-            return fn_createCaptureCamera_(camera, enable_audio);
+            return fn_createCaptureCamera_(camera, params);
         return Ptr<IVideoCapture>();
     }
-    Ptr<IVideoCapture> createCapture(const std::string &filename, bool enable_audio) const CV_OVERRIDE
+    Ptr<IVideoCapture> createCapture(const std::string &filename, const VideoWriterParameters& params) const CV_OVERRIDE
     {
         if (fn_createCaptureFile_)
-            return fn_createCaptureFile_(filename, enable_audio);
+            return fn_createCaptureFile_(filename, params);
         return Ptr<IVideoCapture>();
     }
     Ptr<IVideoWriter> createWriter(const std::string& filename, int fourcc, double fps,

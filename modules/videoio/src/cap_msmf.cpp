@@ -211,7 +211,7 @@ struct MediaType
             }      
         }
     }
-    static MediaType createDefault()
+    static MediaType createDefault_Video()
     {
         MediaType res;
         res.width = 640;
@@ -471,7 +471,7 @@ public:
         return S_OK;
     }
 
-    HRESULT Wait(DWORD dwMilliseconds, _ComPtr<IMFSample>& videoSample, BOOL& pbEOS)
+    HRESULT Wait(DWORD dwMilliseconds, _ComPtr<IMFSample>& mediaSample, BOOL& pbEOS)
     {
         pbEOS = FALSE;
 
@@ -489,8 +489,8 @@ public:
         if (!pbEOS)
         {
             cv::AutoLock lock(m_mutex);
-            videoSample = m_lastSample;
-            CV_Assert(videoSample);
+            mediaSample = m_lastSample;
+            CV_Assert(mediaSample);
             m_lastSample.Release();
             ResetEvent(m_hEvent);  // event is auto-reset, but we need this forced reset due time gap between wait() and mutex hold.
         }
@@ -584,12 +584,10 @@ public:
         {
             if (i->second.majorType == MFMediaType_Audio)
             {
-                std::cout << " " << i->second.nAvgBytesPerSec << std::endl;
                 if (best.second.isEmpty() || i->second.isBetterThan(best.second, newType))
                 {
                     best = *i;
                 }
-                //best = *i;
             }
         }
         return best;
@@ -658,7 +656,7 @@ public:
     } MSMFCapture_Mode;
     CvCapture_MSMF();
     virtual ~CvCapture_MSMF();
-    virtual bool open(int, bool = false );
+    virtual bool open(int, bool = false);
     virtual bool open(const cv::String&, bool = false);
     virtual void close();
     virtual double getProperty(int) const CV_OVERRIDE;
@@ -698,7 +696,7 @@ protected:
     bool convertFormat;
     MFTIME duration;
     LONGLONG frameStep;
-    _ComPtr<IMFSample> videoSample;
+    _ComPtr<IMFSample> mediaSample;
     LONGLONG sampleTime;
     bool isOpen;
     _ComPtr<IMFSourceReaderCallback> readCallback;  // non-NULL for "live" streams (camera capture)
@@ -716,7 +714,7 @@ CvCapture_MSMF::CvCapture_MSMF():
     switch_mediatype(false),
     bit_per_sample(16),
     videoFileSource(NULL),
-    videoSample(NULL),
+    mediaSample(NULL),
     outputFormat(CV_CAP_MODE_BGR),
     convertFormat(true),
     sampleTime(0),
@@ -736,7 +734,7 @@ void CvCapture_MSMF::close()
     if (isOpen)
     {
         isOpen = false;
-        videoSample.Release();
+        mediaSample.Release();
         videoFileSource.Release();
         camid = -1;
         filename.clear();
@@ -880,7 +878,7 @@ bool CvCapture_MSMF::configureOutput(MediaType newType, cv::uint32_t outFormat)
         bestMatch = formats.findBestVideoFormat(newType);
     else
         bestMatch = formats.findBestAudioFormat(newType);
-    if (bestMatch.second.isEmpty())// && !switch_mediatype)
+    if (bestMatch.second.isEmpty())
     {
         CV_LOG_DEBUG(NULL, "Can not find video stream with requested parameters");
         return false;
@@ -926,7 +924,7 @@ bool CvCapture_MSMF::configureOutput(MediaType newType, cv::uint32_t outFormat)
         }
     }
     // we select native format first and then our requested format (related issue #12822)
-    if (!newType.isEmpty())// && !switch_mediatype) // camera input
+    if (!newType.isEmpty()) // camera input
         initStream(dwStreamIndex, nativeFormat);
     return initStream(dwStreamIndex, newFormat);
 }
@@ -957,7 +955,7 @@ bool CvCapture_MSMF::open(int index, bool enable_audio)
     camid = index;
     readCallback = cb;
     duration = 0;
-    if (configureOutput((enable_audio) ? MediaType::createDefault_Audio() : MediaType::createDefault(), outputFormat))
+    if (configureOutput((enable_audio) ? MediaType::createDefault_Audio() : MediaType::createDefault_Video(), outputFormat))
     {
         frameStep = captureFormat.getFrameStep();
     }
@@ -977,7 +975,7 @@ bool CvCapture_MSMF::open(const cv::String& _filename, bool enable_audio)
     {
         isOpen = true;
         sampleTime = 0;
-        //switch_mediatype = enable_audio;
+        switch_mediatype = enable_audio;
         if (configureOutput(MediaType(), outputFormat))
         {           
             filename = _filename;
@@ -1021,7 +1019,7 @@ bool CvCapture_MSMF::grabFrame()
             }
         }
         BOOL bEOS = false;
-        if (FAILED(hr = reader->Wait((!switch_mediatype)? 10000 : INFINITE, videoSample, bEOS)))  // 10 sec
+        if (FAILED(hr = reader->Wait((!switch_mediatype)? 10000 : INFINITE, mediaSample, bEOS)))  // 10 sec
         {
             CV_LOG_WARNING(NULL, "videoio(MSMF): can't grab frame. Error: " << hr);
             return false; 
@@ -1036,7 +1034,7 @@ bool CvCapture_MSMF::grabFrame()
     else if (isOpen)
     {
         DWORD streamIndex, flags;
-        videoSample.Release();
+        mediaSample.Release();
         HRESULT hr;
         for(;;)
         {
@@ -1047,14 +1045,14 @@ bool CvCapture_MSMF::grabFrame()
                 &streamIndex,  // Receives the actual stream index.
                 &flags,        // Receives status flags.
                 switch_mediatype ? NULL : &sampleTime,   // Receives the time stamp.
-                &videoSample   // Receives the sample or NULL.
+                &mediaSample   // Receives the sample or NULL.
             )))
                 break;
             if (streamIndex != dwStreamIndex)
                 break;
             if (flags & (MF_SOURCE_READERF_ERROR | MF_SOURCE_READERF_ALLEFFECTSREMOVED | MF_SOURCE_READERF_ENDOFSTREAM))
                 break;
-            if (videoSample)
+            if (mediaSample)
                 break;
             if (flags & MF_SOURCE_READERF_STREAMTICK)
             {
@@ -1111,21 +1109,21 @@ bool CvCapture_MSMF::retrieveFrame(int, cv::OutputArray frame)
     CV_TRACE_FUNCTION();
     do
     {
-        if (!videoSample)
+        if (!mediaSample)
            break;
 
         _ComPtr<IMFMediaBuffer> buf = NULL;
 
         CV_TRACE_REGION("get_contiguous_buffer");
-        if (!SUCCEEDED(videoSample->ConvertToContiguousBuffer(&buf)))
+        if (!SUCCEEDED(mediaSample->ConvertToContiguousBuffer(&buf)))
         {
             CV_TRACE_REGION("get_buffer");
             DWORD bcnt = 0;
-            if (!SUCCEEDED(videoSample->GetBufferCount(&bcnt)))
+            if (!SUCCEEDED(mediaSample->GetBufferCount(&bcnt)))
                 break;
             if (bcnt == 0)
                 break;
-            if (!SUCCEEDED(videoSample->GetBufferByIndex(0, &buf)))
+            if (!SUCCEEDED(mediaSample->GetBufferByIndex(0, &buf)))
                 break;
         }
 
@@ -1243,7 +1241,7 @@ bool CvCapture_MSMF::setTime(double time, bool rough)
     if (SUCCEEDED(videoFileSource->GetPresentationAttribute((DWORD)MF_SOURCE_READER_MEDIASOURCE, MF_SOURCE_READER_MEDIASOURCE_CHARACTERISTICS, &var)) &&
         var.vt == VT_UI4 && var.ulVal & MFMEDIASOURCE_CAN_SEEK)
     {
-        videoSample.Release();
+        mediaSample.Release();
         bool useGrabbing = time > 0 && !rough && !(var.ulVal & MFMEDIASOURCE_HAS_SLOW_SEEK);
         PropVariantClear(&var);
         sampleTime = (useGrabbing && time >= frameStep) ? (LONGLONG)floor(time + 0.5) - frameStep : (LONGLONG)floor(time + 0.5);
@@ -1254,7 +1252,7 @@ bool CvCapture_MSMF::setTime(double time, bool rough)
         if (resOK && useGrabbing)
         {
             LONGLONG timeborder = (LONGLONG)floor(time + 0.5) - frameStep / 2;
-            do { resOK = grabFrame(); videoSample.Release(); } while (resOK && sampleTime < timeborder);
+            do { resOK = grabFrame(); mediaSample.Release(); } while (resOK && sampleTime < timeborder);
         }
         return resOK;
     }
@@ -1412,7 +1410,7 @@ double CvCapture_MSMF::getProperty( int property_id ) const
         case CV_CAP_PROP_ISO_SPEED:
         case CV_CAP_PROP_SETTINGS:
         case CV_CAP_PROP_BUFFERSIZE:
-        case CV_CAP_SWITCH_AUDIO_STREAM:
+        case CV_CAP_PROP_AUDIO_ENABLE :
             return switch_mediatype;
         case CV_CAP_PROP_BPS:
             return bit_per_sample;
@@ -1556,52 +1554,39 @@ bool CvCapture_MSMF::setProperty( int property_id, double value )
         case CV_CAP_PROP_ISO_SPEED:
         case CV_CAP_PROP_SETTINGS:
         case CV_CAP_PROP_BUFFERSIZE:
-        case CV_CAP_SWITCH_AUDIO_STREAM:
+        case CV_CAP_PROP_AUDIO_ENABLE :
             if(value == 1)
             {
                 switch_mediatype = true;
-                return configureOutput(MediaType(), outputFormat);
+                if(camid)
+                {
+                    return configureOutput((switch_mediatype) ? MediaType::createDefault_Audio() : MediaType::createDefault_Video() , outputFormat);
+                }
+                else
+                {
+                    return configureOutput(MediaType(), outputFormat);
+                }
+                return true;
             }
             else if(value == 0)
             {
                 switch_mediatype = false;
-                return configureOutput(MediaType(), outputFormat);
+                return true;
             }     
             else 
                 return false;
-        /*
-            if(value == 1)
-            {
-                switch_mediatype = true;
-                if(camid)
-                {
-                    return configureOutput(MediaType::createDefault_Audio(), outputFormat);
-                }
-                else
-                {
-                    return configureOutput(MediaType(), outputFormat);
-                }
-                
-            }
-            else if(value == 0)
-            {
-                switch_mediatype = false;
-                if(camid)
-                {
-                    return configureOutput(MediaType::createDefault_Audio(), outputFormat);
-                }
-                else
-                {
-                    return configureOutput(MediaType(), outputFormat);
-                }
-            }     
-            else 
-                return false;*/
         case CV_CAP_PROP_BPS:
             if(value == 8 || value == 16 || value == 24 || value == 32)
             {
                 bit_per_sample = static_cast<int>(value);
-                return configureOutput(MediaType(), outputFormat);       
+                if(camid)
+                {
+                    return configureOutput(MediaType::createDefault_Audio(), outputFormat);
+                }
+                else
+                {
+                    return configureOutput(MediaType(), outputFormat);
+                }
             }
             else
             {
@@ -1614,11 +1599,12 @@ bool CvCapture_MSMF::setProperty( int property_id, double value )
     return false;
 }
 
-cv::Ptr<cv::IVideoCapture> cv::cvCreateCapture_MSMF(int index, bool enable_audio)
+cv::Ptr<cv::IVideoCapture> cv::cvCreateCapture_MSMF(int index, const VideoWriterParameters& params)
 {
     cv::Ptr<CvCapture_MSMF> capture = cv::makePtr<CvCapture_MSMF>();
     if (capture)
     {
+        const bool enable_audio = params.get(CAP_PROP_AUDIO_ENABLE, true);
         capture->open(index, enable_audio);
         if (capture->isOpened())
             return capture;
@@ -1626,11 +1612,12 @@ cv::Ptr<cv::IVideoCapture> cv::cvCreateCapture_MSMF(int index, bool enable_audio
     return cv::Ptr<cv::IVideoCapture>();
 }
 
-cv::Ptr<cv::IVideoCapture> cv::cvCreateCapture_MSMF (const cv::String& filename, bool enable_audio)
+cv::Ptr<cv::IVideoCapture> cv::cvCreateCapture_MSMF (const cv::String& filename, const VideoWriterParameters& params)
 {
     cv::Ptr<CvCapture_MSMF> capture = cv::makePtr<CvCapture_MSMF>();
     if (capture)
     {
+        const bool enable_audio = params.get(CAP_PROP_AUDIO_ENABLE, true);
         capture->open(filename, enable_audio);
         if (capture->isOpened())
             return capture;
@@ -1906,7 +1893,7 @@ CvResult CV_API_CALL cv_capture_open(const char* filename, int camera_index, CV_
         if (res)
         {
             *handle = (CvPluginCapture)cap;
-            return CV_ERROR_OK;
+            return CAP_PROP_AUDIO_ENABLE ;
         }
     }
     catch (...)
@@ -1924,7 +1911,7 @@ CvResult CV_API_CALL cv_capture_release(CvPluginCapture handle)
         return CV_ERROR_FAIL;
     CaptureT* instance = (CaptureT*)handle;
     delete instance;
-    return CV_ERROR_OK;
+    return CAP_PROP_AUDIO_ENABLE ;
 }
 
 
@@ -1939,7 +1926,7 @@ CvResult CV_API_CALL cv_capture_get_prop(CvPluginCapture handle, int prop, CV_OU
     {
         CaptureT* instance = (CaptureT*)handle;
         *val = instance->getProperty(prop);
-        return CV_ERROR_OK;
+        return CAP_PROP_AUDIO_ENABLE ;
     }
     catch (...)
     {
@@ -1955,7 +1942,7 @@ CvResult CV_API_CALL cv_capture_set_prop(CvPluginCapture handle, int prop, doubl
     try
     {
         CaptureT* instance = (CaptureT*)handle;
-        return instance->setProperty(prop, val) ? CV_ERROR_OK : CV_ERROR_FAIL;
+        return instance->setProperty(prop, val) ? CAP_PROP_AUDIO_ENABLE  : CV_ERROR_FAIL;
     }
     catch (...)
     {
@@ -1971,7 +1958,7 @@ CvResult CV_API_CALL cv_capture_grab(CvPluginCapture handle)
     try
     {
         CaptureT* instance = (CaptureT*)handle;
-        return instance->grabFrame() ? CV_ERROR_OK : CV_ERROR_FAIL;
+        return instance->grabFrame() ? CAP_PROP_AUDIO_ENABLE  : CV_ERROR_FAIL;
     }
     catch (...)
     {
@@ -2009,7 +1996,7 @@ CvResult CV_API_CALL cv_writer_open(const char* filename, int fourcc, double fps
         if (wrt && wrt->open(filename, fourcc, fps, sz, isColor != 0))
         {
             *handle = (CvPluginWriter)wrt;
-            return CV_ERROR_OK;
+            return CAP_PROP_AUDIO_ENABLE ;
         }
     }
     catch (...)
@@ -2027,7 +2014,7 @@ CvResult CV_API_CALL cv_writer_release(CvPluginWriter handle)
         return CV_ERROR_FAIL;
     WriterT* instance = (WriterT*)handle;
     delete instance;
-    return CV_ERROR_OK;
+    return CAP_PROP_AUDIO_ENABLE ;
 }
 
 static
@@ -2054,7 +2041,7 @@ CvResult CV_API_CALL cv_writer_write(CvPluginWriter handle, const unsigned char*
         Size sz(width, height);
         Mat img(sz, CV_MAKETYPE(CV_8U, cn), (void*)data, (size_t)step);
         instance->write(img);
-        return CV_ERROR_OK;
+        return CAP_PROP_AUDIO_ENABLE ;
     }
     catch (...)
     {

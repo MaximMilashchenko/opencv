@@ -87,15 +87,21 @@ VideoCapture::~VideoCapture()
     icap.release();
 }
 
-bool VideoCapture::open(const String& filename, int apiPreference, bool enable_audio)
+bool VideoCapture::open(const String& filename, int apiPreference)
 {
-    CV_TRACE_FUNCTION();
+    return open(filename, apiPreference, std::vector<int> { CAP_PROP_AUDIO_ENABLE , static_cast<int>(0) });
+}
+
+bool VideoCapture::open(const String& filename, int apiPreference, const std::vector<int>& params)
+{
+    CV_INSTRUMENT_REGION();
 
     if (isOpened())
     {
         release();
     }
 
+    const VideoWriterParameters parameters(params);
     const std::vector<VideoBackendInfo> backends = cv::videoio_registry::getAvailableBackends_CaptureByFilename();
     for (size_t i = 0; i < backends.size(); i++)
     {
@@ -105,14 +111,14 @@ bool VideoCapture::open(const String& filename, int apiPreference, bool enable_a
 
             CV_CAPTURE_LOG_DEBUG(NULL,
                                  cv::format("VIDEOIO(%s): trying capture filename='%s' ...",
-                                            info.name, filename.c_str()));
+                                            info.name, filename.c_str()));//??
             CV_Assert(!info.backendFactory.empty());
             const Ptr<IBackend> backend = info.backendFactory->getBackend();
             if (!backend.empty())
             {
                 try
                 {
-                    icap = backend->createCapture(filename, enable_audio);
+                    icap = backend->createCapture(filename, parameters);
                     if (!icap.empty())
                     {
                         CV_CAPTURE_LOG_DEBUG(NULL,
@@ -180,7 +186,12 @@ bool VideoCapture::open(const String& filename, int apiPreference, bool enable_a
     return false;
 }
 
-bool VideoCapture::open(int cameraNum, int apiPreference, bool enable_audio)
+bool VideoCapture::open(int cameraNum, int apiPreference)
+{
+    return open(cameraNum, apiPreference, std::vector<int> { CAP_PROP_AUDIO_ENABLE , static_cast<int>(0) });
+}
+
+bool VideoCapture::open(int cameraNum, int apiPreference, const std::vector<int>& params)
 {
     CV_TRACE_FUNCTION();
 
@@ -200,6 +211,7 @@ bool VideoCapture::open(int cameraNum, int apiPreference, bool enable_audio)
         }
     }
 
+    const VideoWriterParameters parameters(params);
     const std::vector<VideoBackendInfo> backends = cv::videoio_registry::getAvailableBackends_CaptureByIndex();
     for (size_t i = 0; i < backends.size(); i++)
     {
@@ -208,7 +220,7 @@ bool VideoCapture::open(int cameraNum, int apiPreference, bool enable_audio)
         {
             CV_CAPTURE_LOG_DEBUG(NULL,
                                  cv::format("VIDEOIO(%s): trying capture cameraNum=%d ...",
-                                            info.name, cameraNum));
+                                            info.name, cameraNum));//???
 
             CV_Assert(!info.backendFactory.empty());
             const Ptr<IBackend> backend = info.backendFactory->getBackend();
@@ -216,7 +228,7 @@ bool VideoCapture::open(int cameraNum, int apiPreference, bool enable_audio)
             {
                 try
                 {
-                    icap = backend->createCapture(cameraNum, enable_audio);
+                    icap = backend->createCapture(cameraNum, parameters);
                     if (!icap.empty())
                     {
                         CV_CAPTURE_LOG_DEBUG(NULL,

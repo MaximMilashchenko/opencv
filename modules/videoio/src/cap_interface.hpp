@@ -273,13 +273,13 @@ Ptr<IVideoWriter> create_AVFoundation_writer(const std::string& filename, int fo
 
 Ptr<IVideoCapture> create_WRT_capture(int device);
 
-Ptr<IVideoCapture> cvCreateCapture_MSMF(int index, bool enable_audio);
-Ptr<IVideoCapture> cvCreateCapture_MSMF(const std::string& filename, bool enable_audio);
+Ptr<IVideoCapture> cvCreateCapture_MSMF(int index, const VideoWriterParameters& params);
+Ptr<IVideoCapture> cvCreateCapture_MSMF(const std::string& filename, const VideoWriterParameters& params);
 Ptr<IVideoWriter> cvCreateVideoWriter_MSMF(const std::string& filename, int fourcc,
                                            double fps, const Size& frameSize,
                                            const VideoWriterParameters& params);
 
-Ptr<IVideoCapture> create_DShow_capture(int index, bool enable_audio);
+Ptr<IVideoCapture> create_DShow_capture(int index, const VideoWriterParameters& params);
 
 Ptr<IVideoCapture> create_V4L_capture_cam(int index);
 Ptr<IVideoCapture> create_V4L_capture_file(const std::string &filename);
@@ -287,7 +287,7 @@ Ptr<IVideoCapture> create_V4L_capture_file(const std::string &filename);
 Ptr<IVideoCapture> create_OpenNI2_capture_cam( int index );
 Ptr<IVideoCapture> create_OpenNI2_capture_file( const std::string &filename );
 
-Ptr<IVideoCapture> create_Images_capture(const std::string &filename, bool enable_audio);
+Ptr<IVideoCapture> create_Images_capture(const std::string &filename, const VideoWriterParameters& params);
 Ptr<IVideoWriter> create_Images_writer(const std::string& filename, int fourcc,
                                        double fps, const Size& frameSize,
                                        const VideoWriterParameters& params);
@@ -303,7 +303,7 @@ Ptr<IVideoCapture> create_XIMEA_capture_file( const std::string &serialNumber );
 
 Ptr<IVideoCapture> create_Aravis_capture( int index );
 
-Ptr<IVideoCapture> createMotionJpegCapture(const std::string& filename, bool enable_audio);
+Ptr<IVideoCapture> createMotionJpegCapture(const std::string& filename, const VideoWriterParameters& params);
 Ptr<IVideoWriter> createMotionJpegWriter(const std::string& filename, int fourcc,
                                          double fps, const Size& frameSize,
                                          const VideoWriterParameters& params);

@@ -221,7 +221,7 @@ bool MotionJpegCapture::open(const String& filename)
     return isOpened();
 }
 
-Ptr<IVideoCapture> createMotionJpegCapture(const String& filename, bool enable_audio)
+Ptr<IVideoCapture> createMotionJpegCapture(const String& filename, const VideoWriterParameters& params)
 {
     Ptr<MotionJpegCapture> mjdecoder(new MotionJpegCapture(filename));
     if( mjdecoder->isOpened() )

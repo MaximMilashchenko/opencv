@@ -3,6 +3,7 @@
 #include <opencv2/highgui.hpp>
 #include <iostream>
 #include <stdio.h>
+#include <thread>
 
 using namespace cv;
 using namespace std;
@@ -18,30 +19,20 @@ int main(int, char**)
     //congigurate VideoCapture for video
     VideoCapture cap_video;
     // open selected camera using selected API
-    cap_video.open("file_name.format", apiID);//"C:\\Users\\mmilashc\\Desktop\\OCVextra\\opencv_extra\\testdata\\highgui\\audio\\mp4\\test_16bit_2channels_44100hz.mp4", apiID);
+    cap_video.open(0, apiID);
     if (!cap_video.isOpened()) {
-        cerr << "ERROR! Can't to open file\n";
+        cerr << "ERROR! Can't to open camera\n";
         return -1;
     }
     //congigurate VideoCapture for audio
     VideoCapture cap_audio;
     // open selected camera using selected API
-    cap_audio.open("file_name.format", apiID);//("C:\\Users\\mmilashc\\Desktop\\OCVextra\\opencv_extra\\testdata\\highgui\\audio\\mp4\\test_16bit_2channels_44100hz.mp4", apiID);
+    std::vector<int> params { CAP_PROP_AUDIO_ENABLE , static_cast<int>(1) };
+    cap_audio.open(0, apiID, params);
     if (!cap_audio.isOpened()) {
-        cerr << "ERROR! Can't to open file\n";
+        cerr << "ERROR! Can't to open camera\n";
         return -1;
-    }
-    if(!cap_audio.set(CAP_SWITCH_AUDIO_STREAM, true))// If second argument is true, than audio - on and video - off. If second argument is false, than video - on and audio - off
-    {
-        cerr << "ERROR! The format has not been switched\n";
-        return -1;
-    }
-    if(!cap_audio.set(CAP_PROP_BPS, 16))// Use for formats using lossy compression. Set bit_per_sample for audio. The default will be the one set by the decoder
-    {
-        cerr << "ERROR! Parameter was not set\n";
-        return -1;
-    }  
-
+    } 
     //--- GRAB AND WRITE LOOP
     cout << "Start grabbing" << endl;
     for (;;)
@@ -64,8 +55,8 @@ int main(int, char**)
         // write audio PCM in MAT
         if(!frame_audio.empty())
         {
-            audio_data.push_back(frame_audio);
-            cout << frame_audio << endl;
+            //audio_data.push_back(frame_audio);
+            //cout << frame_audio << endl;
         }
     }
     return 0;

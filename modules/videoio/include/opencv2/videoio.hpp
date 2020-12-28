@@ -180,7 +180,7 @@ enum VideoCaptureProperties {
        CAP_PROP_BITRATE       =47, //!< (read-only) Video bitrate in kbits/s
        CAP_PROP_ORIENTATION_META=48, //!< (read-only) Frame rotation defined by stream meta (applicable for FFmpeg back-end only)
        CAP_PROP_ORIENTATION_AUTO=49, //!< if true - rotates output frames of CvCapture considering video file's metadata  (applicable for FFmpeg back-end only) (https://github.com/opencv/opencv/issues/15499)
-       CAP_SWITCH_AUDIO_STREAM=1000,
+       CAP_PROP_AUDIO_ENABLE =1000,
        CAP_PROP_BPS           =1001,
 #ifndef CV_DOXYGEN
        CV__CAP_PROP_LATEST
@@ -677,7 +677,21 @@ public:
 
     The method first calls VideoCapture::release to close the already opened file or camera.
      */
-    CV_WRAP virtual bool open(const String& filename, int apiPreference = CAP_ANY, bool enable_audio = false);
+    CV_WRAP virtual bool open(const String& filename, int apiPreference = CAP_ANY);
+
+    /** @brief  Opens a video file or a capturing device or an IP video stream for video capturing.
+
+    @overload
+
+    Parameters are same as the constructor VideoCapture(const String& filename, int apiPreference = CAP_ANY, bool const std::vector<int>& params)
+    The `params` parameter allows to specify extra parameters encoded as pairs (paramId_1, paramValue_1, paramId_2, paramValue_2, ... .)
+    see cv::VideoCaptureProperties
+
+    @return `true` if the file has been successfully opened
+
+    The method first calls VideoCapture::release to close the already opened file or camera.
+     */
+    CV_WRAP virtual bool open(const String& filename, int apiPreference, const std::vector<int>& params);
 
     /** @brief  Opens a camera for video capturing
 
@@ -688,7 +702,20 @@ public:
 
     The method first calls VideoCapture::release to close the already opened file or camera.
     */
-    CV_WRAP virtual bool open(int index, int apiPreference = CAP_ANY, bool enable_audio = false);
+    CV_WRAP virtual bool open(int index, int apiPreference = CAP_ANY);
+
+    /** @brief  Opens a camera for video capturing
+
+    @overload
+
+    Parameters are same as the constructor VideoCapture(int index, int apiPreference = CAP_ANY)
+    The `params` parameter allows to specify extra parameters encoded as pairs (paramId_1, paramValue_1, paramId_2, paramValue_2, ... .)
+    see cv::VideoCaptureProperties
+    @return `true` if the camera has been successfully opened.
+
+    The method first calls VideoCapture::release to close the already opened file or camera.
+    */
+    CV_WRAP virtual bool open(int index, int apiPreference, const std::vector<int>& params);
 
     /** @brief Returns true if video capturing has been initialized already.
 
