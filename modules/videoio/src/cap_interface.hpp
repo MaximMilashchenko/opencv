@@ -116,6 +116,16 @@ public:
         }
         return unusedParams;
     }
+    
+    std::vector<int> getAll() const {
+        std::vector<int> allParams;
+        for (const auto &param : params_)
+        {
+            allParams.push_back(param.key);
+            allParams.push_back(param.value);
+        }
+        return allParams;
+    }
 private:
     std::vector<VideoWriterParameter> params_;
 };
