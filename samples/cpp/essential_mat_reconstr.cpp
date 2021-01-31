@@ -80,7 +80,7 @@ static void getPlanes (InputArray points3d_, std::vector<int> &labels, std::vect
             double xx = 0, yy = 0, zz = 0, xy = 0, xz = 0, yz = 0;
             for (int s : sample) {
                 const double x_ = points[3*s] - c_x, y_ = points[3*s+1] - c_y, z_ = points[3*s+2] - c_z;
-                xx += x_*x_; yy += y_*y_; zz += z_*z_; xy = x_*y_; yz += y_*z_; xz += x_*z_;
+                xx += x_*x_; yy += y_*y_; zz += z_*z_; xy += x_*y_; yz += y_*z_; xz += x_*z_;
             }
             xx /= n; yy /= n; zz /= n; xy /= n; yz /= n; xz /= n;
             Vec3d weighted_normal(0,0,0);
@@ -203,14 +203,14 @@ int main(int args, char** argv) {
        image_dir = argv[2];
     }
     std::ifstream file(data_file, std::ios_base::in);
-    CV_CheckEQ(file.is_open(), true, "Data file is not found!");
+    CV_CheckEQ((int)file.is_open(), 1, "Data file is not found!");
     std::string filename1, filename2;
     std::getline(file, filename1);
     std::getline(file, filename2);
     Mat image1 = imread(image_dir+filename1);
     Mat image2 = imread(image_dir+filename2);
-    CV_CheckEQ(image1.empty(), false, "Image 1 is not found!");
-    CV_CheckEQ(image2.empty(), false, "Image 2 is not found!");
+    CV_CheckEQ((int)image1.empty(), 0, "Image 1 is not found!");
+    CV_CheckEQ((int)image2.empty(), 0, "Image 2 is not found!");
 
     // read calibration
     Matx33d K;

@@ -1416,7 +1416,10 @@ static TlsAbstraction* getTlsAbstraction()
 #ifdef WINRT
 static __declspec( thread ) void* tlsData = NULL; // using C++11 thread attribute for local thread data
 TlsAbstraction::TlsAbstraction() {}
-TlsAbstraction::~TlsAbstraction() {}
+TlsAbstraction::~TlsAbstraction()
+{
+    cv::__termination = true;  // DllMain is missing in static builds
+}
 void* TlsAbstraction::getData_() const
 {
     return tlsData;
@@ -1440,6 +1443,7 @@ TlsAbstraction::TlsAbstraction()
 }
 TlsAbstraction::~TlsAbstraction()
 {
+    cv::__termination = true;  // DllMain is missing in static builds
 #ifndef CV_USE_FLS
     TlsFree(tlsKey);
 #else // CV_USE_FLS
@@ -1472,6 +1476,7 @@ TlsAbstraction::TlsAbstraction()
 }
 TlsAbstraction::~TlsAbstraction()
 {
+    cv::__termination = true;  // DllMain is missing in static builds
     if (pthread_key_delete(tlsKey) != 0)
     {
         // Don't use logging here
@@ -2360,6 +2365,13 @@ public:
             ippTopFeatures = ippCPUID_SSE42;
 
         pIppLibInfo = ippiGetLibVersion();
+
+        // workaround: https://github.com/opencv/opencv/issues/12959
+        std::string ippName(pIppLibInfo->Name ? pIppLibInfo->Name : "");
+        if (ippName.find("SSE4.2") != std::string::npos)
+        {
+            ippTopFeatures = ippCPUID_SSE42;
+        }
     }
 
 public:
@@ -2391,16 +2403,12 @@ unsigned long long getIppFeatures()
 #endif
 }
 
-unsigned long long getIppTopFeatures();
-
+#ifdef HAVE_IPP
 unsigned long long getIppTopFeatures()
 {
-#ifdef HAVE_IPP
     return getIPPSingleton().ippTopFeatures;
-#else
-    return 0;
-#endif
 }
+#endif
 
 void setIppStatus(int status, const char * const _funcname, const char * const _filename, int _line)
 {

@@ -620,7 +620,7 @@ namespace cv {
                             // read section
                             read_net = false;
                             ++layers_counter;
-                            const size_t layer_type_size = line.find("]") - 1;
+                            const size_t layer_type_size = line.find(']') - 1;
                             CV_Assert(layer_type_size < line.size());
                             std::string layer_type = line.substr(1, layer_type_size);
                             net->layers_cfg[layers_counter]["layer_type"] = layer_type;
@@ -984,8 +984,8 @@ namespace cv {
                     }
 
                     std::string activation = getParam<std::string>(layer_params, "activation", "linear");
-                    if(activation == "leaky" || activation == "swish" || activation == "mish" || activation == "logistic")
-                        ++cv_layers_counter;  // For ReLU, Swish, Mish, Sigmoid
+                    if (activation != "linear")
+                        ++cv_layers_counter;  // For ReLU, Swish, Mish, Sigmoid, etc
 
                     if(!darknet_layers_counter)
                         tensor_shape.resize(1);
