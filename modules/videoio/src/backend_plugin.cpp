@@ -769,11 +769,7 @@ public:
 };
 
 
-<<<<<<< HEAD
-Ptr<IVideoCapture> PluginBackend::createCapture(int camera, const VideoWriterParameters&) const
-=======
 Ptr<IVideoCapture> PluginBackend::createCapture(int camera, const VideoCaptureParameters& params) const
->>>>>>> e250bae356f2a69026c8b24524fc0d768e180dbf
 {
     try
     {
@@ -797,11 +793,7 @@ Ptr<IVideoCapture> PluginBackend::createCapture(int camera, const VideoCapturePa
     return Ptr<IVideoCapture>();
 }
 
-<<<<<<< HEAD
-Ptr<IVideoCapture> PluginBackend::createCapture(const std::string &filename, const VideoWriterParameters&) const
-=======
 Ptr<IVideoCapture> PluginBackend::createCapture(const std::string &filename, const VideoCaptureParameters& params) const
->>>>>>> e250bae356f2a69026c8b24524fc0d768e180dbf
 {
     try
     {

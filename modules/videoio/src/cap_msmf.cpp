@@ -650,8 +650,8 @@ public:
     } MSMFCapture_Mode;
     CvCapture_MSMF();
     virtual ~CvCapture_MSMF();
-    virtual bool open(int, const cv::VideoWriterParameters& = cv::VideoWriterParameters());
-    virtual bool open(const cv::String&, const cv::VideoWriterParameters& = cv::VideoWriterParameters());
+    virtual bool open(int, const cv::VideoCaptureParameters& = cv::VideoCaptureParameters());
+    virtual bool open(const cv::String&, const cv::VideoCaptureParameters& = cv::VideoCaptureParameters());
     virtual void close();
     virtual double getProperty(int) const CV_OVERRIDE;
     virtual bool setProperty(int, double) CV_OVERRIDE;
@@ -663,7 +663,7 @@ protected:
     bool configureOutput(MediaType newType, cv::uint32_t outFormat);
     bool setTime(double time, bool rough);
     bool configureHW(bool enable);
-    void findProperty(const cv::VideoWriterParameters&);
+    bool setParams(const cv::VideoCaptureParameters&);
 
     template <typename CtrlT>
     bool readComplexPropery(long prop, long& val) const;
@@ -927,13 +927,14 @@ bool CvCapture_MSMF::configureOutput(MediaType newType, cv::uint32_t outFormat)
     return initStream(dwStreamIndex, newFormat);
 }
 
-bool CvCapture_MSMF::open(int index, const cv::VideoWriterParameters& params)
+bool CvCapture_MSMF::open(int index, const cv::VideoCaptureParameters& params)
 {
     close();
     if (index < 0)
         return false;
+    if( !(this->setParams(params)) )
+        return false;
     DeviceList devices;
-    enable_audio = params.get(CV_CAP_PROP_AUDIO_ENABLE, true);
     UINT32 count = devices.read((enable_audio) ? MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE_AUDCAP_GUID : MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE_VIDCAP_GUID);
     if (count == 0 || static_cast<UINT32>(index) > count)
     {
@@ -961,13 +962,13 @@ bool CvCapture_MSMF::open(int index, const cv::VideoWriterParameters& params)
     return isOpen;
 }
 
-bool CvCapture_MSMF::open(const cv::String& _filename, const cv::VideoWriterParameters& params)
+bool CvCapture_MSMF::open(const cv::String& _filename, const cv::VideoCaptureParameters& params)
 {
     close();
     if (_filename.empty())
         return false;
-    //findProperty(params);
-    //enable_audio = params.get(CV_CAP_PROP_AUDIO_ENABLE, true);
+    if(!setParams(params))
+        return false;
     // Set source reader parameters
     _ComPtr<IMFAttributes> attr = getDefaultSourceConfig();
     cv::AutoBuffer<wchar_t> unicodeFileName(_filename.length() + 1);
@@ -1286,17 +1287,34 @@ bool CvCapture_MSMF::readComplexPropery(long prop, long & val) const
     return true;
 }
 
-void CvCapture_MSMF::findProperty(const cv::VideoWriterParameters& params)
+bool CvCapture_MSMF::setParams(const cv::VideoCaptureParameters& params)
 {
-    std::vector<int> prop = params.getAll();
-    for(int i = 0; i <= prop.size(); i+=2)
+    if (!params.empty())
     {
-        std::cout << prop[i] << prop[i+1] << std::endl;
-        if(!(this->setProperty(prop[i], prop[i+1])))
+        if (params.has(CV_CAP_PROP_AUDIO_ENABLE))
         {
-            CV_Error(cv::Error::StsNotImplemented, "Invalid or unsupported parameter");
+            double value = params.get<double>(CV_CAP_PROP_AUDIO_ENABLE);
+            if (value == 1)
+            {
+                enable_audio = true;
+            }
+            else if(value == 0)
+            {
+                enable_audio = false;
+            }
+            else
+            {
+                CV_LOG_ERROR(NULL, "VIDEOIO/MSMF: CAP_PROP_AUDIO_ENABLE parameter value is invalid/unsupported: " << value);
+                return false;
+            }
+        }
+        if (params.warnUnusedParameters())
+        {
+            CV_LOG_ERROR(NULL, "VIDEOIO/MSMF: unsupported parameters in .open(), see logger INFO channel for details");
+            return false;
         }
     }
+    return true;
 }
 
 double CvCapture_MSMF::getProperty( int property_id ) const
@@ -1574,16 +1592,12 @@ bool CvCapture_MSMF::setProperty( int property_id, double value )
                 enable_audio = true;
                 if(isOpen)
                 {
-                    std::cout << "good";
                     if (camera_status)
-                        return open(0, (cv::VideoWriterParameters( { CV_CAP_PROP_AUDIO_ENABLE , static_cast<int>(1) }) ));
+                        return open(0, (cv::VideoCaptureParameters( { CV_CAP_PROP_AUDIO_ENABLE , static_cast<int>(1) }) ));
                     else
                         return configureOutput(MediaType(), outputFormat);
                 }
-                //else
-                //{
-                //    return false;
-                //}
+                return true;
             }
             else if(value == 0)
             {
@@ -1591,14 +1605,11 @@ bool CvCapture_MSMF::setProperty( int property_id, double value )
                 if(isOpen)
                 {
                     if (camera_status)
-                        return open(0, (cv::VideoWriterParameters( { CV_CAP_PROP_AUDIO_ENABLE , static_cast<int>(0) }) ));
+                        return open(0, (cv::VideoCaptureParameters( { CV_CAP_PROP_AUDIO_ENABLE , static_cast<int>(0) }) ));
                     else
                         return configureOutput(MediaType(), outputFormat);
                 }
-                //else
-                //{
-                //    return false;
-                //}
+                return true;
             }     
             else 
                 return false;
@@ -1629,11 +1640,11 @@ bool CvCapture_MSMF::setProperty( int property_id, double value )
     return false;
 }
 
-cv::Ptr<cv::IVideoCapture> cv::cvCreateCapture_MSMF (int index, const VideoWriterParameters& params)
+cv::Ptr<cv::IVideoCapture> cv::cvCreateCapture_MSMF (int index, const VideoCaptureParameters& params)
 {
     cv::Ptr<CvCapture_MSMF> capture = cv::makePtr<CvCapture_MSMF>();
     if (capture)
-    {
+    {   capture->setProperty(CV_CAP_PROP_AUDIO_ENABLE, 1);
         capture->open(index, params);
         if (capture->isOpened())
             return capture;
@@ -1641,7 +1652,7 @@ cv::Ptr<cv::IVideoCapture> cv::cvCreateCapture_MSMF (int index, const VideoWrite
     return cv::Ptr<cv::IVideoCapture>();
 }
 
-cv::Ptr<cv::IVideoCapture> cv::cvCreateCapture_MSMF (const cv::String& filename, const VideoWriterParameters& params)
+cv::Ptr<cv::IVideoCapture> cv::cvCreateCapture_MSMF (const cv::String& filename, const VideoCaptureParameters& params)
 {
     cv::Ptr<CvCapture_MSMF> capture = cv::makePtr<CvCapture_MSMF>();
     if (capture)

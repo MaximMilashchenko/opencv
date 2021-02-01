@@ -45,18 +45,6 @@ public:
 
     ~StaticBackend() CV_OVERRIDE {}
 
-<<<<<<< HEAD
-    Ptr<IVideoCapture> createCapture(int camera, const VideoWriterParameters& params) const CV_OVERRIDE
-    {
-        if (fn_createCaptureCamera_)
-            return fn_createCaptureCamera_(camera, params);
-        return Ptr<IVideoCapture>();
-    }
-    Ptr<IVideoCapture> createCapture(const std::string &filename, const VideoWriterParameters& params) const CV_OVERRIDE
-    {
-        if (fn_createCaptureFile_)
-            return fn_createCaptureFile_(filename, params);
-=======
     Ptr<IVideoCapture> createCapture(int camera, const VideoCaptureParameters& params) const CV_OVERRIDE
     {
         if (fn_createCaptureCamera_)
@@ -81,7 +69,6 @@ public:
             }
             return cap;
         }
->>>>>>> e250bae356f2a69026c8b24524fc0d768e180dbf
         return Ptr<IVideoCapture>();
     }
     Ptr<IVideoWriter> createWriter(const std::string& filename, int fourcc, double fps,

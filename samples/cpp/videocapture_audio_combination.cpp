@@ -16,17 +16,16 @@ int main(int, char**)
     
     //--- INITIALIZE VIDEOCAPTURES
     int apiID = cv::CAP_MSMF; // 0 = autodetect default API
-    //congigurate VideoCapture for video
+    //congigurate VideoCapture for video and audio
     VideoCapture cap_video;
+    VideoCapture cap_audio;
     // open selected camera using selected API
     cap_video.open(0, apiID);
     if (!cap_video.isOpened()) {
         cerr << "ERROR! Can't to open camera\n";
         return -1;
-    }
-    //congigurate VideoCapture for audio
-    VideoCapture cap_audio;
-    // open selected camera using selected API
+    }  
+    // open selected micro using selected API
     std::vector<int> params { CAP_PROP_AUDIO_ENABLE , static_cast<int>(1) };
     cap_audio.open(0, apiID, params);
     if (!cap_audio.isOpened()) {
@@ -42,7 +41,7 @@ int main(int, char**)
         cap_audio.read(frame_audio);
         // check if we succeeded
         if (frame_video.empty() && frame_audio.empty()) {
-            cerr << "ERROR! blank frame_video and frame_audio grabbed\n";
+            cerr << "ERROR! blank frame video and frame audio grabbed\n";
             break;
         }
         // show live and wait for a key with timeout long enough to show images
@@ -55,8 +54,8 @@ int main(int, char**)
         // write audio PCM in MAT
         if(!frame_audio.empty())
         {
-            //audio_data.push_back(frame_audio);
-            //cout << frame_audio << endl;
+            audio_data.push_back(frame_audio);
+            cout << frame_audio << endl;
         }
     }
     return 0;

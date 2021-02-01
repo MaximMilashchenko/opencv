@@ -14,14 +14,11 @@ int main(int, char**)
     Mat data;
     // INITIALIZE VIDEOCAPTURES
     int apiID = cv::CAP_MSMF; // 0 = autodetect default API
-    //congigurate VideoCapture for video
+    //congigurate VideoCapture for audio
     VideoCapture cap;
-    // open selected camera using selected API
-    std::vector<int> params { CAP_PROP_AUDIO_ENABLE, 1, CAP_PROP_BPS, 32 };
-    cap.open("example_WAV.wav", apiID, params);
-    std::cout << "gy" << std::endl;
-    //if(!setProperty(CAP_PROP_AUDIO_ENABLE, 1))
-    //    return -1;
+    std::vector<int> params { CAP_PROP_AUDIO_ENABLE, 1 };
+    // open selected micro using selected API
+    cap.open( 0, apiID, params);
     if (!cap.isOpened()) {
         cerr << "ERROR! Can't to open file\n";
         return -1;
@@ -40,7 +37,7 @@ int main(int, char**)
         // write audio PCM in MAT
         if(!frame.empty())
         {
-            cout << frame << endl;
+            //cout << frame << endl;
         }
     }
     return 0;

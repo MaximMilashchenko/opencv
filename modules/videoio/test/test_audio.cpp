@@ -54,7 +54,6 @@ private:
     void configuration_videocapture()
     {
         ASSERT_TRUE(cap.open(findDataFile(root + audio_name + audio_format), backend.second, params));
-        //ASSERT_TRUE(cap.set(CAP_PROP_AUDIO_ENABLE ,1));
         ASSERT_TRUE(cap.set(CAP_PROP_BPS, bit_per_sample));
     }
     void get_test_data_from_bin_file()

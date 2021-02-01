@@ -24,6 +24,7 @@ int main(int, char**)
     // OR advance usage: select any API backend
     int deviceID = 0;             // 0 = open default camera
     int apiID = cv::CAP_MSMF;      // 0 = autodetect default API
+    std::vector<int> params {CAP_PROP_AUDIO_ENABLE, 1};
     // open selected camera using selected API
     cap.open(deviceID, apiID);
     // check if we succeeded
@@ -31,7 +32,7 @@ int main(int, char**)
         cerr << "ERROR! Unable to open camera\n";
         return -1;
     }
-
+    std::cout << cap.get(CAP_PROP_AUDIO_ENABLE) << std::endl;
     //--- GRAB AND WRITE LOOP
     cout << "Start grabbing" << endl
         << "Press any key to terminate" << endl;

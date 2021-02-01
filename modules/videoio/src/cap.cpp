@@ -103,11 +103,7 @@ VideoCapture::~VideoCapture()
 
 bool VideoCapture::open(const String& filename, int apiPreference)
 {
-<<<<<<< HEAD
-    return open(filename, apiPreference, std::vector<int> { CAP_PROP_AUDIO_ENABLE , static_cast<int>(0) });
-=======
     return open(filename, apiPreference, std::vector<int>());
->>>>>>> e250bae356f2a69026c8b24524fc0d768e180dbf
 }
 
 bool VideoCapture::open(const String& filename, int apiPreference, const std::vector<int>& params)
@@ -119,11 +115,7 @@ bool VideoCapture::open(const String& filename, int apiPreference, const std::ve
         release();
     }
 
-<<<<<<< HEAD
-    const VideoWriterParameters parameters(params);
-=======
     const VideoCaptureParameters parameters(params);
->>>>>>> e250bae356f2a69026c8b24524fc0d768e180dbf
     const std::vector<VideoBackendInfo> backends = cv::videoio_registry::getAvailableBackends_CaptureByFilename();
     for (size_t i = 0; i < backends.size(); i++)
     {
@@ -210,11 +202,7 @@ bool VideoCapture::open(const String& filename, int apiPreference, const std::ve
 
 bool VideoCapture::open(int cameraNum, int apiPreference)
 {
-<<<<<<< HEAD
-    return open(cameraNum, apiPreference, std::vector<int> { CAP_PROP_AUDIO_ENABLE , static_cast<int>(0) });
-=======
     return open(cameraNum, apiPreference, std::vector<int>());
->>>>>>> e250bae356f2a69026c8b24524fc0d768e180dbf
 }
 
 bool VideoCapture::open(int cameraNum, int apiPreference, const std::vector<int>& params)
@@ -237,11 +225,7 @@ bool VideoCapture::open(int cameraNum, int apiPreference, const std::vector<int>
         }
     }
 
-<<<<<<< HEAD
-    const VideoWriterParameters parameters(params);
-=======
     const VideoCaptureParameters parameters(params);
->>>>>>> e250bae356f2a69026c8b24524fc0d768e180dbf
     const std::vector<VideoBackendInfo> backends = cv::videoio_registry::getAvailableBackends_CaptureByIndex();
     for (size_t i = 0; i < backends.size(); i++)
     {

@@ -361,13 +361,13 @@ Ptr<IVideoWriter> create_AVFoundation_writer(const std::string& filename, int fo
 
 Ptr<IVideoCapture> create_WRT_capture(int device);
 
-Ptr<IVideoCapture> cvCreateCapture_MSMF(int index, const VideoWriterParameters& params);
-Ptr<IVideoCapture> cvCreateCapture_MSMF(const std::string& filename, const VideoWriterParameters& params);
+Ptr<IVideoCapture> cvCreateCapture_MSMF(int index, const VideoCaptureParameters& params);
+Ptr<IVideoCapture> cvCreateCapture_MSMF(const std::string& filename, const VideoCaptureParameters& params);
 Ptr<IVideoWriter> cvCreateVideoWriter_MSMF(const std::string& filename, int fourcc,
                                            double fps, const Size& frameSize,
                                            const VideoWriterParameters& params);
 
-Ptr<IVideoCapture> create_DShow_capture(int index, const VideoWriterParameters& params);
+Ptr<IVideoCapture> create_DShow_capture(int index);
 
 Ptr<IVideoCapture> create_V4L_capture_cam(int index);
 Ptr<IVideoCapture> create_V4L_capture_file(const std::string &filename);
