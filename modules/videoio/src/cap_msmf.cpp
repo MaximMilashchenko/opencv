@@ -169,6 +169,7 @@ struct MediaType
     UINT32 bit_per_sample;
     UINT32 nChannels;
     UINT32 nAvgBytesPerSec;
+    UINT32 nSamplesPerSec;
 
     GUID majorType; // video or audio
     GUID subType; // fourCC
@@ -185,6 +186,7 @@ struct MediaType
         bit_per_sample(0),
         nChannels(0),
         nAvgBytesPerSec(0),
+        nSamplesPerSec(0),
         majorType({ 0 }),//MFMediaType_Video
         subType({ 0 })
     {
@@ -197,6 +199,7 @@ struct MediaType
                 pType->GetUINT32(MF_MT_AUDIO_BITS_PER_SAMPLE, &bit_per_sample);
                 pType->GetUINT32(MF_MT_AUDIO_NUM_CHANNELS, &nChannels);
                 pType->GetUINT32(MF_MT_AUDIO_AVG_BYTES_PER_SECOND, &nAvgBytesPerSec);
+                pType->GetUINT32(MF_MT_AUDIO_FLOAT_SAMPLES_PER_SECOND, &nSamplesPerSec);
             }
             else if (majorType == MFMediaType_Video)
             {
@@ -224,16 +227,21 @@ struct MediaType
         MediaType res;
         res.majorType = MFMediaType_Audio;
         res.subType = MFAudioFormat_PCM;
-        res.bit_per_sample = 16;
-        res.nChannels = 2;
+        res.bit_per_sample = 32;
+        res.nChannels = 1;
+        res.nSamplesPerSec = 44100;
         return res;
     }
-    inline bool isEmpty() const
+    inline bool isEmpty(bool enable_audio = false) const
     {
-        if(width == 0 && height == 0)
-            return nAvgBytesPerSec == 0;
-        else 
+        if(!enable_audio)
             return width == 0 && height == 0;
+        else
+            return nChannels == 0;
+        /*if(width == 0 && height == 0)
+            return nChannels == 0;
+        else 
+            return width == 0 && height == 0;*/
     }
     _ComPtr<IMFMediaType> createMediaType_Video() const
     {
@@ -243,10 +251,6 @@ struct MediaType
             MFSetAttributeSize(res.Get(), MF_MT_FRAME_SIZE, width, height);
         if (stride != 0)
             res->SetUINT32(MF_MT_DEFAULT_STRIDE, stride);
-        if (bit_per_sample != 0)
-            res->SetUINT32(MF_MT_AUDIO_BITS_PER_SAMPLE, bit_per_sample);
-        if (nChannels != 0)
-            res->SetUINT32(MF_MT_AUDIO_NUM_CHANNELS, nChannels);
         res->SetUINT32(MF_MT_FIXED_SIZE_SAMPLES, isFixedSize);
         if (frameRateNum != 0 || frameRateDenom != 0)
             MFSetAttributeRatio(res.Get(), MF_MT_FRAME_RATE, frameRateNum, frameRateDenom);
@@ -265,16 +269,18 @@ struct MediaType
     {
         _ComPtr<IMFMediaType> res;
         MFCreateMediaType(&res);
+        if (majorType != GUID())
+            res->SetGUID(MF_MT_MAJOR_TYPE, majorType);
+        if (subType != GUID())
+            res->SetGUID(MF_MT_SUBTYPE, subType);
         if (bit_per_sample != 0)
             res->SetUINT32(MF_MT_AUDIO_BITS_PER_SAMPLE, bit_per_sample);
         if (nChannels != 0)
             res->SetUINT32(MF_MT_AUDIO_NUM_CHANNELS, nChannels);
         //if(nAvgBytesPerSec != 0)
-            //res->SetUINT32(MF_MT_AUDIO_AVG_BYTES_PER_SECOND, nAvgBytesPerSec);
-        if (majorType != GUID())
-            res->SetGUID(MF_MT_MAJOR_TYPE, majorType);
-        if (subType != GUID())
-            res->SetGUID(MF_MT_SUBTYPE, subType);
+        //    res->SetUINT32(MF_MT_AUDIO_AVG_BYTES_PER_SECOND, nAvgBytesPerSec);
+        if(nSamplesPerSec != 0)
+            res->SetUINT32(MF_MT_AUDIO_FLOAT_SAMPLES_PER_SECOND, nSamplesPerSec);       
         return res;
     }
     void setFramerate(double fps)
@@ -323,7 +329,7 @@ struct MediaType
         }
         else if(majorType == MFMediaType_Audio)
         {
-            if (other.nAvgBytesPerSec < ref.nAvgBytesPerSec)
+            if (nAvgBytesPerSec < other.nAvgBytesPerSec)
                 return true;
         }
         return false;
@@ -578,7 +584,7 @@ public:
         {
             if (i->second.majorType == MFMediaType_Audio)
             {
-                if (best.second.isEmpty() || i->second.isBetterThan(best.second, newType))
+                if (best.second.isEmpty(true) || i->second.isBetterThan(best.second, newType))
                 {
                     best = *i;
                 }
@@ -875,14 +881,19 @@ bool CvCapture_MSMF::configureOutput(MediaType newType, cv::uint32_t outFormat)
     if(!enable_audio)
         bestMatch = formats.findBestVideoFormat(newType);
     else
+    {
         bestMatch = formats.findBestAudioFormat(newType);
-    if (bestMatch.second.isEmpty())
+    }
+    if (bestMatch.second.isEmpty(enable_audio))
     {
         CV_LOG_DEBUG(NULL, "Can not find video stream with requested parameters");
         return false;
     }
     dwStreamIndex = bestMatch.first.stream;
     nativeFormat = bestMatch.second;
+    MediaType newnativeFormat = bestMatch.second;
+    //newnativeFormat.bit_per_sample = newType.bit_per_sample;
+    //newnativeFormat.subType = MFAudioFormat_PCM;
     MediaType newFormat = nativeFormat;
     if (convertFormat) 
     {
@@ -918,12 +929,27 @@ bool CvCapture_MSMF::configureOutput(MediaType newType, cv::uint32_t outFormat)
         {   
             newFormat.majorType = MFMediaType_Audio;
             newFormat.subType = MFAudioFormat_PCM;
-            newFormat.bit_per_sample = bit_per_sample;
+            //if(nativeFormat.bit_per_sample == 0)
+                //newFormat.bit_per_sample = 16;
+            //else
+            if(!newType.isEmpty(enable_audio))
+            {
+                std::cout << newFormat.bit_per_sample << "/" << newFormat.nChannels << "/" << newFormat.nSamplesPerSec << std::endl;
+                newFormat.bit_per_sample = newType.bit_per_sample;
+                newFormat.nChannels = newType.nChannels;
+                newFormat.nSamplesPerSec = newType.nSamplesPerSec;
+                std::cout << newFormat.bit_per_sample << "/" << newFormat.nChannels << "/" << newFormat.nSamplesPerSec << std::endl;
+            }
+            else
+            {
+                newFormat.bit_per_sample = 16;
+                //newFormat.nChannels = 2;
+            }
         }
     }
     // we select native format first and then our requested format (related issue #12822)
-    if (!newType.isEmpty()) // camera input
-        initStream(dwStreamIndex, nativeFormat);
+    if (!newType.isEmpty(enable_audio)) // camera input
+        initStream(dwStreamIndex, (enable_audio) ? newFormat : nativeFormat);
     return initStream(dwStreamIndex, newFormat);
 }
 
@@ -1020,7 +1046,7 @@ bool CvCapture_MSMF::grabFrame()
             }
         }
         BOOL bEOS = false;
-        if (FAILED(hr = reader->Wait((!enable_audio)? 10000 : INFINITE, mediaSample, bEOS)))  // 10 sec
+        if (FAILED(hr = reader->Wait(enable_audio ? INFINITE : 10000, mediaSample, bEOS)))  // 10 sec
         {
             CV_LOG_WARNING(NULL, "videoio(MSMF): can't grab frame. Error: " << hr);
             return false; 
@@ -1133,7 +1159,7 @@ bool CvCapture_MSMF::retrieveFrame(int, cv::OutputArray frame)
         BYTE* ptr = NULL;
         LONG pitch = 0;
         DWORD maxsize = 0, cursize = 0;
-
+        DWORD maxsize_audio = 3528;
 
         // "For 2-D buffers, the Lock2D method is more efficient than the Lock method"
         // see IMFMediaBuffer::Lock method documentation: https://msdn.microsoft.com/en-us/library/windows/desktop/bb970366(v=vs.85).aspx
@@ -1153,7 +1179,7 @@ bool CvCapture_MSMF::retrieveFrame(int, cv::OutputArray frame)
         {
             CV_Assert(lock2d == false);
             CV_TRACE_REGION_NEXT("lock");
-            if (!SUCCEEDED(buf->Lock(&ptr, &maxsize, &cursize)))
+            if (!SUCCEEDED(buf->Lock(&ptr, enable_audio ? &maxsize_audio : &maxsize, &cursize)))
             {
                 break;
             }
@@ -1161,6 +1187,12 @@ bool CvCapture_MSMF::retrieveFrame(int, cv::OutputArray frame)
 
         if (!ptr)
             break;
+        /*DWORD pcbCurrentLength = 0, pcbMaxLength = 0;
+        buf->GetCurrentLength(&pcbCurrentLength);
+        buf->GetMaxLength(&pcbMaxLength);
+        std::cout << "pcbCurrentLength" << pcbCurrentLength << std::endl;
+        std::cout << "pcbMaxLength" << pcbMaxLength << std::endl;*/
+        std::cout << "cursize" << cursize << std::endl;
         if(!enable_audio)
         {
             if (convertFormat)
@@ -1201,7 +1233,7 @@ bool CvCapture_MSMF::retrieveFrame(int, cv::OutputArray frame)
             }
         }
         else
-        {   
+        {
             switch(captureFormat_audio.bit_per_sample)
             {
             case 0:
@@ -1211,14 +1243,15 @@ bool CvCapture_MSMF::retrieveFrame(int, cv::OutputArray frame)
                 cv::Mat(cursize/(captureFormat_audio.nChannels), captureFormat_audio.nChannels , CV_8S, ptr).copyTo(frame);
                 break;
             case 16:
-                //cv::Mat(cursize, 1 , CV_8U, ptr).copyTo(frame);
-                cv::Mat(cursize/(2*captureFormat_audio.nChannels), captureFormat_audio.nChannels , CV_16S, ptr).copyTo(frame);
+                cv::Mat(cursize, 1 , CV_8U, ptr).copyTo(frame);
+                //cv::Mat(cursize/(2*captureFormat_audio.nChannels), captureFormat_audio.nChannels , CV_16S, ptr).copyTo(frame);
                 break;
             case 24:
                 cv::Mat(cursize/(captureFormat_audio.nChannels), captureFormat_audio.nChannels , CV_8U, ptr).copyTo(frame);
                 break;
             case 32:
-                cv::Mat(cursize/(4*captureFormat_audio.nChannels), captureFormat_audio.nChannels , CV_32S, ptr).copyTo(frame);
+                cv::Mat(cursize, 1 , CV_8U, ptr).copyTo(frame);
+                //cv::Mat(cursize/(4*captureFormat_audio.nChannels), captureFormat_audio.nChannels , CV_32S, ptr).copyTo(frame);
                 break;
             default:
                 frame.release();
@@ -1472,6 +1505,7 @@ bool CvCapture_MSMF::writeComplexProperty(long prop, double val, long flags)
 bool CvCapture_MSMF::setProperty( int property_id, double value )
 {
     MediaType newFormat = captureFormat;
+    MediaType newFormat_audio = captureFormat_audio;
     if (isOpen)
         switch (property_id)
         {
@@ -1595,7 +1629,7 @@ bool CvCapture_MSMF::setProperty( int property_id, double value )
                     if (camera_status)
                         return open(0, (cv::VideoCaptureParameters( { CV_CAP_PROP_AUDIO_ENABLE , static_cast<int>(1) }) ));
                     else
-                        return configureOutput(MediaType(), outputFormat);
+                        return configureOutput(newFormat_audio, outputFormat);
                 }
                 return true;
             }
@@ -1607,7 +1641,7 @@ bool CvCapture_MSMF::setProperty( int property_id, double value )
                     if (camera_status)
                         return open(0, (cv::VideoCaptureParameters( { CV_CAP_PROP_AUDIO_ENABLE , static_cast<int>(0) }) ));
                     else
-                        return configureOutput(MediaType(), outputFormat);
+                        return configureOutput(newFormat_audio, outputFormat);
                 }
                 return true;
             }     
@@ -1619,10 +1653,8 @@ bool CvCapture_MSMF::setProperty( int property_id, double value )
                 bit_per_sample = static_cast<int>(value);
                 if(isOpen)
                 {
-                    if (camera_status)
-                        return false;
-                    else
-                        return configureOutput(MediaType(), outputFormat);
+                    newFormat_audio.bit_per_sample = (UINT32)(value);
+                    return configureOutput(newFormat_audio, outputFormat);
                 }
                 else
                 {
@@ -1644,7 +1676,7 @@ cv::Ptr<cv::IVideoCapture> cv::cvCreateCapture_MSMF (int index, const VideoCaptu
 {
     cv::Ptr<CvCapture_MSMF> capture = cv::makePtr<CvCapture_MSMF>();
     if (capture)
-    {   capture->setProperty(CV_CAP_PROP_AUDIO_ENABLE, 1);
+    {
         capture->open(index, params);
         if (capture->isOpened())
             return capture;
