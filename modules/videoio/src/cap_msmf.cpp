@@ -228,7 +228,7 @@ struct MediaType
         res.majorType = MFMediaType_Audio;
         res.subType = MFAudioFormat_PCM;
         res.bit_per_sample = 32;
-        res.nChannels = 1;
+        res.nChannels = 2;
         res.nSamplesPerSec = 44100;
         return res;
     }
@@ -238,10 +238,6 @@ struct MediaType
             return width == 0 && height == 0;
         else
             return nChannels == 0;
-        /*if(width == 0 && height == 0)
-            return nChannels == 0;
-        else 
-            return width == 0 && height == 0;*/
     }
     _ComPtr<IMFMediaType> createMediaType_Video() const
     {
@@ -277,8 +273,6 @@ struct MediaType
             res->SetUINT32(MF_MT_AUDIO_BITS_PER_SAMPLE, bit_per_sample);
         if (nChannels != 0)
             res->SetUINT32(MF_MT_AUDIO_NUM_CHANNELS, nChannels);
-        //if(nAvgBytesPerSec != 0)
-        //    res->SetUINT32(MF_MT_AUDIO_AVG_BYTES_PER_SECOND, nAvgBytesPerSec);
         if(nSamplesPerSec != 0)
             res->SetUINT32(MF_MT_AUDIO_FLOAT_SAMPLES_PER_SECOND, nSamplesPerSec);       
         return res;
@@ -693,7 +687,6 @@ protected:
     MediaType captureFormat_audio;
     bool enable_audio;
     bool camera_status; //on or off
-    int bit_per_sample;
     int outputFormat;
     bool convertFormat;
     MFTIME duration;
@@ -715,7 +708,6 @@ CvCapture_MSMF::CvCapture_MSMF():
 #endif
     enable_audio(false),
     camera_status(false),
-    bit_per_sample(16),
     videoFileSource(NULL),
     mediaSample(NULL),
     outputFormat(CV_CAP_MODE_BGR),
@@ -891,9 +883,6 @@ bool CvCapture_MSMF::configureOutput(MediaType newType, cv::uint32_t outFormat)
     }
     dwStreamIndex = bestMatch.first.stream;
     nativeFormat = bestMatch.second;
-    MediaType newnativeFormat = bestMatch.second;
-    //newnativeFormat.bit_per_sample = newType.bit_per_sample;
-    //newnativeFormat.subType = MFAudioFormat_PCM;
     MediaType newFormat = nativeFormat;
     if (convertFormat) 
     {
@@ -929,27 +918,21 @@ bool CvCapture_MSMF::configureOutput(MediaType newType, cv::uint32_t outFormat)
         {   
             newFormat.majorType = MFMediaType_Audio;
             newFormat.subType = MFAudioFormat_PCM;
-            //if(nativeFormat.bit_per_sample == 0)
-                //newFormat.bit_per_sample = 16;
-            //else
             if(!newType.isEmpty(enable_audio))
             {
-                std::cout << newFormat.bit_per_sample << "/" << newFormat.nChannels << "/" << newFormat.nSamplesPerSec << std::endl;
                 newFormat.bit_per_sample = newType.bit_per_sample;
                 newFormat.nChannels = newType.nChannels;
                 newFormat.nSamplesPerSec = newType.nSamplesPerSec;
-                std::cout << newFormat.bit_per_sample << "/" << newFormat.nChannels << "/" << newFormat.nSamplesPerSec << std::endl;
             }
             else
             {
                 newFormat.bit_per_sample = 16;
-                //newFormat.nChannels = 2;
             }
         }
     }
     // we select native format first and then our requested format (related issue #12822)
-    if (!newType.isEmpty(enable_audio)) // camera input
-        initStream(dwStreamIndex, (enable_audio) ? newFormat : nativeFormat);
+    if (!newType.isEmpty()) // camera input
+        initStream(dwStreamIndex, nativeFormat);
     return initStream(dwStreamIndex, newFormat);
 }
 
@@ -1159,7 +1142,6 @@ bool CvCapture_MSMF::retrieveFrame(int, cv::OutputArray frame)
         BYTE* ptr = NULL;
         LONG pitch = 0;
         DWORD maxsize = 0, cursize = 0;
-        DWORD maxsize_audio = 3528;
 
         // "For 2-D buffers, the Lock2D method is more efficient than the Lock method"
         // see IMFMediaBuffer::Lock method documentation: https://msdn.microsoft.com/en-us/library/windows/desktop/bb970366(v=vs.85).aspx
@@ -1179,7 +1161,7 @@ bool CvCapture_MSMF::retrieveFrame(int, cv::OutputArray frame)
         {
             CV_Assert(lock2d == false);
             CV_TRACE_REGION_NEXT("lock");
-            if (!SUCCEEDED(buf->Lock(&ptr, enable_audio ? &maxsize_audio : &maxsize, &cursize)))
+            if (!SUCCEEDED(buf->Lock(&ptr, &maxsize, &cursize)))
             {
                 break;
             }
@@ -1187,12 +1169,7 @@ bool CvCapture_MSMF::retrieveFrame(int, cv::OutputArray frame)
 
         if (!ptr)
             break;
-        /*DWORD pcbCurrentLength = 0, pcbMaxLength = 0;
-        buf->GetCurrentLength(&pcbCurrentLength);
-        buf->GetMaxLength(&pcbMaxLength);
-        std::cout << "pcbCurrentLength" << pcbCurrentLength << std::endl;
-        std::cout << "pcbMaxLength" << pcbMaxLength << std::endl;*/
-        std::cout << "cursize" << cursize << std::endl;
+        //std::cout << "cursize" << cursize << std::endl;
         if(!enable_audio)
         {
             if (convertFormat)
@@ -1243,15 +1220,13 @@ bool CvCapture_MSMF::retrieveFrame(int, cv::OutputArray frame)
                 cv::Mat(cursize/(captureFormat_audio.nChannels), captureFormat_audio.nChannels , CV_8S, ptr).copyTo(frame);
                 break;
             case 16:
-                cv::Mat(cursize, 1 , CV_8U, ptr).copyTo(frame);
-                //cv::Mat(cursize/(2*captureFormat_audio.nChannels), captureFormat_audio.nChannels , CV_16S, ptr).copyTo(frame);
+                cv::Mat(cursize/(2*captureFormat_audio.nChannels), captureFormat_audio.nChannels , CV_16S, ptr).copyTo(frame);
                 break;
             case 24:
                 cv::Mat(cursize/(captureFormat_audio.nChannels), captureFormat_audio.nChannels , CV_8U, ptr).copyTo(frame);
                 break;
             case 32:
-                cv::Mat(cursize, 1 , CV_8U, ptr).copyTo(frame);
-                //cv::Mat(cursize/(4*captureFormat_audio.nChannels), captureFormat_audio.nChannels , CV_32S, ptr).copyTo(frame);
+                cv::Mat(cursize/(4*captureFormat_audio.nChannels), captureFormat_audio.nChannels , CV_32S, ptr).copyTo(frame);
                 break;
             default:
                 frame.release();
@@ -1478,7 +1453,7 @@ double CvCapture_MSMF::getProperty( int property_id ) const
         case CV_CAP_PROP_AUDIO_ENABLE :
             return enable_audio;
         case CV_CAP_PROP_BPS:
-            return bit_per_sample;
+            return captureFormat_audio.bit_per_sample;
         default:
             break;
         }
@@ -1649,8 +1624,7 @@ bool CvCapture_MSMF::setProperty( int property_id, double value )
                 return false;
         case CV_CAP_PROP_BPS:
             if(value == 8 || value == 16 || value == 24 || value == 32)
-            { 
-                bit_per_sample = static_cast<int>(value);
+            {
                 if(isOpen)
                 {
                     newFormat_audio.bit_per_sample = (UINT32)(value);
