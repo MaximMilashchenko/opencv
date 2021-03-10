@@ -1,14 +1,4 @@
-// This file is part of OpenCV project.
-// It is subject to the license terms in the LICENSE file found in the top-level directory
-// of this distribution and at http://opencv.org/license.html.
-
-// Note: all tests here are DISABLED by default due specific requirements.
-// Don't use #if 0 - these tests should be tested for compilation at least.
-//
-// Usage: opencv_test_videoio --gtest_also_run_disabled_tests --gtest_filter=*videoio_camera*<tested case>*
-
-#include "test_precomp.hpp"
-#include <opencv2/core/utils/configuration.private.hpp>
+// Usage: opencv_test_videoio --gtest_also_run_disabled_tests
 
 namespace opencv_test { namespace {
 

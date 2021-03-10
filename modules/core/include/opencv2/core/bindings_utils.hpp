@@ -8,6 +8,8 @@
 #include <opencv2/core/async.hpp>
 #include <opencv2/core/detail/async_promise.hpp>
 
+#include <stdexcept>
+
 namespace cv { namespace utils {
 //! @addtogroup core_utils
 //! @{
@@ -114,6 +116,12 @@ String dumpRange(const Range& argument)
 }
 
 CV_WRAP static inline
+void testRaiseGeneralException()
+{
+    throw std::runtime_error("exception text");
+}
+
+CV_WRAP static inline
 AsyncArray testAsyncArray(InputArray argument)
 {
     AsyncPromise p;
@@ -136,7 +144,10 @@ AsyncArray testAsyncException()
     return p.getArrayResult();
 }
 
+namespace fs {
+    CV_EXPORTS_W cv::String getCacheDirectoryForDownloads();
+} // namespace fs
 //! @}
-}} // namespace
+}} // namespaces cv /  utils
 
 #endif // OPENCV_CORE_BINDINGS_UTILS_HPP

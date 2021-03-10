@@ -735,6 +735,11 @@ TEST_P(Test_Darknet_layers, mish)
     testDarknetLayer("mish", true);
 }
 
+TEST_P(Test_Darknet_layers, tanh)
+{
+    testDarknetLayer("tanh");
+}
+
 TEST_P(Test_Darknet_layers, avgpool_softmax)
 {
     testDarknetLayer("avgpool_softmax");
@@ -796,6 +801,11 @@ TEST_P(Test_Darknet_layers, relu)
      if (backend == DNN_BACKEND_INFERENCE_ENGINE_NN_BUILDER_2019 && target == DNN_TARGET_MYRIAD)
         applyTestTag(CV_TEST_TAG_DNN_SKIP_IE_MYRIAD);
     testDarknetLayer("relu");
+}
+
+TEST_P(Test_Darknet_layers, sam)
+{
+    testDarknetLayer("sam", true);
 }
 
 INSTANTIATE_TEST_CASE_P(/**/, Test_Darknet_layers, dnnBackendsAndTargets());
