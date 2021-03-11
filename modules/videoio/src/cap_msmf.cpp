@@ -1701,31 +1701,22 @@ bool CvCapture_MSMF::setProperty( int property_id, double value )
         case CV_CAP_PROP_BUFFERSIZE:
         case CV_CAP_PROP_AUDIO_ENABLE:
             if(value == 1)
-            {
                 enable_audio = true;
-                if(isOpen)
-                {
-                    if (camera_status)
-                        return open(0, &(cv::VideoCaptureParameters({ CV_CAP_PROP_AUDIO_ENABLE , static_cast<int>(1) })) );
-                    else
-                        return configureOutput(newFormat_audio, outputFormat);
-                }
-                return true;
-            }
             else if(value == 0)
-            {
-                enable_audio = false;
-                if(isOpen)
-                {
-                    if (camera_status)
-                        return open(0, &(cv::VideoCaptureParameters({ CV_CAP_PROP_AUDIO_ENABLE , static_cast<int>(0) })) );
-                    else
-                        return configureOutput(newFormat_audio, outputFormat);
-                }
-                return true;
-            }     
-            else 
+                    enable_audio = false;
+            else
                 return false;
+            if(isOpen)
+            {
+                if (camera_status)
+                {
+                    cv::VideoCaptureParameters params({ CV_CAP_PROP_AUDIO_ENABLE , static_cast<int>(enable_audio) });
+                    return open(0, &params);
+                }
+                else
+                    return configureOutput(newFormat_audio, outputFormat);
+            }
+            break;
         case CV_CAP_PROP_BPS:
             if(value == 8 || value == 16 || value == 24 || value == 32)
             {
