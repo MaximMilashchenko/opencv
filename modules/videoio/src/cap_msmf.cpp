@@ -2288,7 +2288,7 @@ CvResult CV_API_CALL cv_writer_release(CvPluginWriter handle)
         return CV_ERROR_FAIL;
     WriterT* instance = (WriterT*)handle;
     delete instance;
-    return CV_ERROR_OK ;
+    return CV_ERROR_OK;
 }
 
 static
