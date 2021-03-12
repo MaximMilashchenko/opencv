@@ -1011,6 +1011,7 @@ bool CvCapture_MSMF::open(int index, const cv::VideoCaptureParameters* params)
         CV_LOG_DEBUG(NULL, "Failed to create source reader");
         return false;
     }
+
     isOpen = true;
     camera_status = true;
     camid = index;
@@ -2110,7 +2111,7 @@ CvResult CV_API_CALL cv_capture_open_with_params(
         if (res)
         {
             *handle = (CvPluginCapture)cap;
-            return CV_ERROR_OK ;
+            return CV_ERROR_OK;
         }
     }
     catch (const std::exception& e)
@@ -2139,7 +2140,7 @@ CvResult CV_API_CALL cv_capture_release(CvPluginCapture handle)
         return CV_ERROR_FAIL;
     CaptureT* instance = (CaptureT*)handle;
     delete instance;
-    return CV_ERROR_OK ;
+    return CV_ERROR_OK;
 }
 
 
@@ -2154,7 +2155,7 @@ CvResult CV_API_CALL cv_capture_get_prop(CvPluginCapture handle, int prop, CV_OU
     {
         CaptureT* instance = (CaptureT*)handle;
         *val = instance->getProperty(prop);
-        return CV_ERROR_OK ;
+        return CV_ERROR_OK;
     }
     catch (const std::exception& e)
     {
@@ -2176,7 +2177,7 @@ CvResult CV_API_CALL cv_capture_set_prop(CvPluginCapture handle, int prop, doubl
     try
     {
         CaptureT* instance = (CaptureT*)handle;
-        return instance->setProperty(prop, val) ? CV_ERROR_OK  : CV_ERROR_FAIL;
+        return instance->setProperty(prop, val) ? CV_ERROR_OK : CV_ERROR_FAIL;
     }
     catch (const std::exception& e)
     {
@@ -2198,7 +2199,7 @@ CvResult CV_API_CALL cv_capture_grab(CvPluginCapture handle)
     try
     {
         CaptureT* instance = (CaptureT*)handle;
-        return instance->grabFrame() ? CV_ERROR_OK  : CV_ERROR_FAIL;
+        return instance->grabFrame() ? CV_ERROR_OK : CV_ERROR_FAIL;
     }
     catch (const std::exception& e)
     {
@@ -2256,7 +2257,7 @@ CvResult CV_API_CALL cv_writer_open_with_params(
         if (wrt && wrt->open(filename, fourcc, fps, sz, parameters))
         {
             *handle = (CvPluginWriter)wrt;
-            return CV_ERROR_OK ;
+            return CV_ERROR_OK;
         }
     }
     catch (const std::exception& e)
@@ -2327,7 +2328,7 @@ CvResult CV_API_CALL cv_writer_write(CvPluginWriter handle, const unsigned char*
         Size sz(width, height);
         Mat img(sz, CV_MAKETYPE(CV_8U, cn), (void*)data, (size_t)step);
         instance->write(img);
-        return CV_ERROR_OK ;
+        return CV_ERROR_OK;
     }
     catch (const std::exception& e)
     {

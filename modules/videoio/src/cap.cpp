@@ -234,7 +234,7 @@ bool VideoCapture::open(int cameraNum, int apiPreference, const std::vector<int>
         {
             CV_CAPTURE_LOG_DEBUG(NULL,
                                  cv::format("VIDEOIO(%s): trying capture cameraNum=%d ...",
-                                            info.name, cameraNum));//???
+                                            info.name, cameraNum));
 
             CV_Assert(!info.backendFactory.empty());
             const Ptr<IBackend> backend = info.backendFactory->getBackend();
