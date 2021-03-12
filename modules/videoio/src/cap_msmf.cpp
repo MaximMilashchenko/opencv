@@ -16,7 +16,6 @@
 #define WINVER _WIN32_WINNT_WIN8
 #endif
 
-#include <fstream>
 #include <windows.h>
 #include <guiddef.h>
 #include <mfidl.h>
@@ -108,14 +107,10 @@ public:
     virtual ~ComPtr()
     {
     }
+
     T** operator&()
     {
         CV_Assert(p == NULL);
-        return p.operator&();
-    }
-    T** operator&(int)
-    {
-        CV_Assert(p != NULL);
         return p.operator&();
     }
     T* operator->() const
@@ -127,10 +122,12 @@ public:
     {
         return p.operator!=(NULL);
     }
+
     T* Get() const
-    {   
+    {
         return p;
     }
+
     void Release()
     {
         if (p)
@@ -439,6 +436,7 @@ public:
         {
             CV_LOG_WARNING(NULL, "videoio(MSMF): OnReadSample() is called with error status: " << hrStatus);
         }
+
         if (MF_SOURCE_READERF_ENDOFSTREAM & dwStreamFlags)
         {
             // Reached the end of the stream.
@@ -447,7 +445,7 @@ public:
         m_hrStatus = hrStatus;
 
         if (FAILED(hr = m_reader->ReadSample(dwStreamIndex, 0, NULL, NULL, NULL, NULL)))
-        {          
+        {
             CV_LOG_WARNING(NULL, "videoio(MSMF): async ReadSample() call is failed with error status: " << hr);
             m_bEOS = true;
         }
@@ -493,6 +491,7 @@ public:
         }
         return m_hrStatus;
     }
+
 private:
     // Destructor is private. Caller should call Release.
     virtual ~SourceReaderCB()
@@ -787,13 +786,9 @@ bool CvCapture_MSMF::initStream(DWORD streamID, const MediaType& mt)
         return false;
     }
     if(!enable_audio) 
-    {
         captureFormat = mt;
-    }
     else
-    {
         captureFormat_audio = mt;
-    }
     return true;
 }
 
@@ -936,7 +931,7 @@ bool CvCapture_MSMF::configureOutput(MediaType newType, cv::uint32_t outFormat)
     dwStreamIndex = bestMatch.first.stream;
     nativeFormat = bestMatch.second;
     MediaType newFormat = nativeFormat;
-    if (convertFormat) 
+    if (convertFormat)
     {
         if (!enable_audio)
         {
@@ -1218,11 +1213,11 @@ bool CvCapture_MSMF::grabFrame()
                 CV_LOG_DEBUG(NULL, "videoio(MSMF): Stream decoding error. Abort capturing");
                 close();
             }
-            /*else if (flags & MF_SOURCE_READERF_ENDOFSTREAM)
+            else if (flags & MF_SOURCE_READERF_ENDOFSTREAM)
             {
                 sampleTime += frameStep;
                 CV_LOG_DEBUG(NULL, "videoio(MSMF): End of stream detected");
-            }*/
+            }
             else
             {
                 sampleTime += frameStep;
@@ -1299,7 +1294,6 @@ bool CvCapture_MSMF::retrieveFrame(int, cv::OutputArray frame)
 
         if (!ptr)
             break;
-        //std::cout << "cursize" << cursize << std::endl;
         if(!enable_audio)
         {
             if (convertFormat)
@@ -2116,7 +2110,7 @@ CvResult CV_API_CALL cv_capture_open_with_params(
         if (res)
         {
             *handle = (CvPluginCapture)cap;
-            return CAP_PROP_AUDIO_ENABLE ;
+            return CV_ERROR_OK ;
         }
     }
     catch (const std::exception& e)
@@ -2145,7 +2139,7 @@ CvResult CV_API_CALL cv_capture_release(CvPluginCapture handle)
         return CV_ERROR_FAIL;
     CaptureT* instance = (CaptureT*)handle;
     delete instance;
-    return CAP_PROP_AUDIO_ENABLE ;
+    return CV_ERROR_OK ;
 }
 
 
@@ -2160,7 +2154,7 @@ CvResult CV_API_CALL cv_capture_get_prop(CvPluginCapture handle, int prop, CV_OU
     {
         CaptureT* instance = (CaptureT*)handle;
         *val = instance->getProperty(prop);
-        return CAP_PROP_AUDIO_ENABLE ;
+        return CV_ERROR_OK ;
     }
     catch (const std::exception& e)
     {
@@ -2182,7 +2176,7 @@ CvResult CV_API_CALL cv_capture_set_prop(CvPluginCapture handle, int prop, doubl
     try
     {
         CaptureT* instance = (CaptureT*)handle;
-        return instance->setProperty(prop, val) ? CAP_PROP_AUDIO_ENABLE  : CV_ERROR_FAIL;
+        return instance->setProperty(prop, val) ? CV_ERROR_OK  : CV_ERROR_FAIL;
     }
     catch (const std::exception& e)
     {
@@ -2204,7 +2198,7 @@ CvResult CV_API_CALL cv_capture_grab(CvPluginCapture handle)
     try
     {
         CaptureT* instance = (CaptureT*)handle;
-        return instance->grabFrame() ? CAP_PROP_AUDIO_ENABLE  : CV_ERROR_FAIL;
+        return instance->grabFrame() ? CV_ERROR_OK  : CV_ERROR_FAIL;
     }
     catch (const std::exception& e)
     {
@@ -2262,7 +2256,7 @@ CvResult CV_API_CALL cv_writer_open_with_params(
         if (wrt && wrt->open(filename, fourcc, fps, sz, parameters))
         {
             *handle = (CvPluginWriter)wrt;
-            return CAP_PROP_AUDIO_ENABLE ;
+            return CV_ERROR_OK ;
         }
     }
     catch (const std::exception& e)
@@ -2293,7 +2287,7 @@ CvResult CV_API_CALL cv_writer_release(CvPluginWriter handle)
         return CV_ERROR_FAIL;
     WriterT* instance = (WriterT*)handle;
     delete instance;
-    return CAP_PROP_AUDIO_ENABLE ;
+    return CV_ERROR_OK ;
 }
 
 static
@@ -2333,7 +2327,7 @@ CvResult CV_API_CALL cv_writer_write(CvPluginWriter handle, const unsigned char*
         Size sz(width, height);
         Mat img(sz, CV_MAKETYPE(CV_8U, cn), (void*)data, (size_t)step);
         instance->write(img);
-        return CAP_PROP_AUDIO_ENABLE ;
+        return CV_ERROR_OK ;
     }
     catch (const std::exception& e)
     {

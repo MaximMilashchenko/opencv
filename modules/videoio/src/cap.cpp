@@ -125,7 +125,7 @@ bool VideoCapture::open(const String& filename, int apiPreference, const std::ve
 
             CV_CAPTURE_LOG_DEBUG(NULL,
                                  cv::format("VIDEOIO(%s): trying capture filename='%s' ...",
-                                            info.name, filename.c_str()));//??
+                                            info.name, filename.c_str()));
             CV_Assert(!info.backendFactory.empty());
             const Ptr<IBackend> backend = info.backendFactory->getBackend();
             if (!backend.empty())

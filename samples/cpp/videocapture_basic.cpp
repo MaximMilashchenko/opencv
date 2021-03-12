@@ -23,24 +23,15 @@ int main(int, char**)
     // cap.open(0);
     // OR advance usage: select any API backend
     int deviceID = 0;             // 0 = open default camera
-    int apiID = cv::CAP_MSMF;      // 0 = autodetect default API
+    int apiID = cv::CAP_ANY;      // 0 = autodetect default API
     // open selected camera using selected API
     cap.open(deviceID, apiID);
-    double camTimeCurr = 0;
-    /*cout << "Frame width: " << cap.get(CAP_PROP_FRAME_WIDTH) << endl;
-    cout << "     height: " << cap.get(CAP_PROP_FRAME_HEIGHT) << endl;
-    cout << "Capturing FPS: " << cap.get(CAP_PROP_FPS) << endl;
-    cap.set(CAP_PROP_FRAME_WIDTH, 1920);
-    cap.set(CAP_PROP_FRAME_HEIGHT, 1080);
-    cap.set(CAP_PROP_FPS, 15);
-    cout << "Frame width: " << cap.get(CAP_PROP_FRAME_WIDTH) << endl;
-    cout << "     height: " << cap.get(CAP_PROP_FRAME_HEIGHT) << endl;
-    cout << "Capturing FPS: " << cap.get(CAP_PROP_FPS) << endl;*/
     // check if we succeeded
     if (!cap.isOpened()) {
         cerr << "ERROR! Unable to open camera\n";
         return -1;
     }
+
     //--- GRAB AND WRITE LOOP
     cout << "Start grabbing" << endl
         << "Press any key to terminate" << endl;
@@ -48,8 +39,6 @@ int main(int, char**)
     {
         // wait for a new frame from camera and store it into 'frame'
         cap.read(frame);
-        //camTimeCurr = cap.get(cv::CAP_PROP_POS_MSEC);
-        std::cout << "size " << frame.size << std::endl;
         // check if we succeeded
         if (frame.empty()) {
             cerr << "ERROR! blank frame grabbed\n";
