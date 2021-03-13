@@ -186,6 +186,14 @@ enum VideoCaptureProperties {
        CAP_PROP_HW_ACCELERATION=50, //!< (**open-only**) Hardware acceleration type (see #VideoAccelerationType). Setting supported only via `params` parameter in cv::VideoCapture constructor / .open() method. Default value is backend-specific.
        CAP_PROP_HW_DEVICE      =51, //!< (**open-only**) Hardware device index (select GPU if multiple available). Device enumeration is acceleration type specific.
        CAP_PROP_HW_ACCELERATION_USE_OPENCL=52, //!< (**open-only**) If non-zero, create new OpenCL context and bind it to current thread. The OpenCL context created with Video Acceleration context attached it (if not attached yet) for optimized GPU data copy between HW accelerated decoder and cv::UMat.
+       CAP_PROP_VIDEO_STREAM = 53, //!< Default value is 0 (based index), -1 is disable. If used for devices, then -1 - camera is off, 0 - camera is on 
+       CAP_PROP_AUDIO_STREAM = 54, //!< Specify stream in multi-language media files, -1 - disable audio processing (default). If used for devices, then -1 - microphone is off, 0 - microphone is on 
+       CAP_PROP_AUDIO_POS = 55, //!< Audio position is measured in samples. Accurate audio sample timestamp of previous grabbed fragment. See CAP_PROP_AUDIO_SAMPLES_PER_SECOND
+       CAP_PROP_AUDIO_DATA_DEPTH = 56, //!<  Alternative definition to bits-per-sample, but with clear handling of 32F / 32S
+       CAP_PROP_AUDIO_SAMPLES_PER_SECOND = 57, //!< determined from file/codec input. If not specified, then selected audio sample rate is 44100 
+       CAP_PROP_AUDIO_BASE_INDEX = 58, //!< Number of video channels
+       CAP_PROP_AUDIO_TOTAL_CHANNELS = 59, //!< Number of audio channels in the selected audio stream.
+       CAP_PROP_AUDIO_TOTAL_STREAMS = 60, //!< Number of audio stream in the used media.
 #ifndef CV_DOXYGEN
        CV__CAP_PROP_LATEST
 #endif
