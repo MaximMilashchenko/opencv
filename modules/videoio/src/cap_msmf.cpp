@@ -569,14 +569,17 @@ public:
     }
     void countNumberOfAudioStreams(DWORD &numberOfAudioStreams)
     {
+        std::pair<MediaID, MediaType> best;
         std::map<MediaID, MediaType>::const_iterator i = formats.begin();
-        int streamIndex = -1;
         for (; i != formats.end(); ++i)
         {
-            if (i->second.majorType == MFMediaType_Audio && i->first.stream != streamIndex)
+            if(i->second.majorType == MFMediaType_Audio)
             {
-                numberOfAudioStreams++;
-                streamIndex = i->first.stream;
+                if(best.second.isEmpty() || i->first.stream != best.first.stream)
+                {
+                    numberOfAudioStreams++;
+                    best = *i;
+                }
             }
         }
     }
@@ -602,7 +605,7 @@ public:
         std::map<MediaID, MediaType>::const_iterator i = formats.begin();
         best = *i;
         for (; i != formats.end(); ++i)
-        {   
+        {
             if (i->second.majorType == MFMediaType_Audio)
             {
                 if ( i->second.AudioIsBetterThan(best.second, newType))
@@ -618,7 +621,7 @@ public:
         std::pair<MediaID, MediaType> best;
         std::map<MediaID, MediaType>::const_iterator i = formats.begin();
         for (; i != formats.end(); ++i)
-        {   
+        {
             if (i->second.majorType == MFMediaType_Audio)
             {
                 if ((*i).first.stream == StreamIndex)
@@ -1078,7 +1081,7 @@ bool CvCapture_MSMF::configureOutput()
         tmp = (!device_status)? configureVideoOutput(MediaType(), outputVideoFormat) : configureVideoOutput(MediaType::createDefault_Video(), outputVideoFormat);
     if (audioStream != -1)
         tmp &= (!device_status)? configureAudioOutput(MediaType()) : configureAudioOutput(MediaType::createDefault_Audio());
-    
+
     return tmp;
 }
 
@@ -1102,7 +1105,7 @@ bool CvCapture_MSMF::open(int index, const cv::VideoCaptureParameters* params)
     UINT32 count = 0;
     if (audioStream != -1)
         count = devices.read(MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE_AUDCAP_GUID);
-    if (videoStream != -1) 
+    if (videoStream != -1)
         count = devices.read(MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE_VIDCAP_GUID);
     if (count == 0 || static_cast<UINT32>(index) > count)
     {
@@ -1238,6 +1241,7 @@ bool CvCapture_MSMF::configureStreams(const cv::VideoCaptureParameters& params)
             return false;
         }
     }
+    return true;
 }
 bool CvCapture_MSMF::setAudioProperties(const cv::VideoCaptureParameters& params)
 {
@@ -1245,7 +1249,7 @@ bool CvCapture_MSMF::setAudioProperties(const cv::VideoCaptureParameters& params
     {
         int value = static_cast<int>(params.get<double>(CAP_PROP_AUDIO_DATA_DEPTH));
         outputAudioFormat = value;
-        if (value != CV_8S & value != CV_16S & value != CV_32S & value != CV_32F)
+        if (value != CV_8S && value != CV_16S && value != CV_32S && value != CV_32F)
         {
             CV_LOG_ERROR(NULL, "VIDEOIO/MSMF: CAP_PROP_AUDIO_DATA_DEPTH parameter value is invalid/unsupported: " << value);
             return false;
@@ -1297,7 +1301,7 @@ bool CvCapture_MSMF::grabFrame()
     else if (isOpen)
     {
         DWORD streamIndex,  flags;
-        std::vector<bool> out_instal_flag;
+        std::vector<bool> outInstalFlag;
         HRESULT hr;
         for (int i = 0; i < dwStreamIndices.size(); i++)
         {
@@ -1331,19 +1335,19 @@ bool CvCapture_MSMF::grabFrame()
                 {
                     CV_LOG_DEBUG(NULL, "videoio(MSMF): Wrong stream read. Abort capturing");
                     close();
-                    out_instal_flag.push_back(false);
+                    outInstalFlag.push_back(false);
                 }
                 else if (flags & MF_SOURCE_READERF_ERROR)
                 {
                     CV_LOG_DEBUG(NULL, "videoio(MSMF): Stream reading error. Abort capturing");
                     close();
-                    out_instal_flag.push_back(false);
+                    outInstalFlag.push_back(false);
                 }
                 else if (flags & MF_SOURCE_READERF_ALLEFFECTSREMOVED)
                 {
                     CV_LOG_DEBUG(NULL, "videoio(MSMF): Stream decoding error. Abort capturing");
                     close();
-                    out_instal_flag.push_back(false);
+                    outInstalFlag.push_back(false);
                 }
                 else if (flags & MF_SOURCE_READERF_ENDOFSTREAM)
                 {
@@ -1370,15 +1374,15 @@ bool CvCapture_MSMF::grabFrame()
                     {
                         CV_LOG_DEBUG(NULL, "videoio(MSMF): Stream current media type changed");
                     }
-                    out_instal_flag.push_back(true);
+                    outInstalFlag.push_back(true);
                 }
             }
         }
         bool tmp = false;
-        if(!out_instal_flag.empty())
+        if(!outInstalFlag.empty())
         {
             tmp = true;
-            for (const auto item : out_instal_flag)
+            for (const auto item : outInstalFlag)
                 tmp &= item;
         }
         return tmp;
@@ -1389,12 +1393,14 @@ bool CvCapture_MSMF::grabFrame()
 bool CvCapture_MSMF::retrieveFrame(int index, cv::OutputArray frame)
 {
     CV_TRACE_FUNCTION();
+    if (index < 0)
+        return false;
     do
     {
         _ComPtr<IMFMediaBuffer> buf = NULL;
         _ComPtr<IMFSample> Sample = NULL;
         if (!device_status)
-            Sample = (index < audioBaseIndex) ? mediaSamples[0] : (videoStream == -1) ? mediaSamples[0] : mediaSamples[1];
+            Sample = ((unsigned int)index < audioBaseIndex) ? mediaSamples[0] : (videoStream == -1) ? mediaSamples[0] : mediaSamples[1];
         else
             Sample = mediaSamples[0];
         if (!Sample)
@@ -1419,7 +1425,7 @@ bool CvCapture_MSMF::retrieveFrame(int index, cv::OutputArray frame)
         // "For 2-D buffers, the Lock2D method is more efficient than the Lock method"
         // see IMFMediaBuffer::Lock method documentation: https://msdn.microsoft.com/en-us/library/windows/desktop/bb970366(v=vs.85).aspx
         _ComPtr<IMF2DBuffer> buffer2d;
-        if (convertFormat && index < audioBaseIndex)
+        if (convertFormat && (unsigned int)index < audioBaseIndex)
         {
             if (SUCCEEDED(buf.As<IMF2DBuffer>(buffer2d)))
             {
@@ -1441,7 +1447,7 @@ bool CvCapture_MSMF::retrieveFrame(int index, cv::OutputArray frame)
         }
         if (!ptr)
             break;
-        if (index < audioBaseIndex)
+        if ((unsigned int)index < audioBaseIndex)
         {
             if (convertFormat)
             {
@@ -1482,7 +1488,7 @@ bool CvCapture_MSMF::retrieveFrame(int index, cv::OutputArray frame)
         }
         else
         {
-            audioSamplePos += cursize/((captureAudioFormat.bit_per_sample/8.)*captureAudioFormat.nChannels);
+            audioSamplePos += cursize/((captureAudioFormat.bit_per_sample/8)*captureAudioFormat.nChannels);
             if (audioFrame.empty())
             {
                 switch (outputAudioFormat)
@@ -1508,22 +1514,22 @@ bool CvCapture_MSMF::retrieveFrame(int index, cv::OutputArray frame)
             {
             case CV_8S:
                 data = cv::Mat(1, audioFrame.rows, CV_8S);
-                for (unsigned int i = 0; i < audioFrame.rows; i++)
+                for (int i = 0; i < audioFrame.rows; i++)
                     data.at<char>(0,i) = audioFrame.at<char>(i,index-audioBaseIndex);
                 break;
             case CV_16S:
                 data = cv::Mat(1, audioFrame.rows, CV_16S);
-                for (unsigned int i = 0; i < audioFrame.rows; i++)
+                for (int i = 0; i < audioFrame.rows; i++)
                     data.at<short>(0,i) = audioFrame.at<short>(i,index-audioBaseIndex);
                 break;
             case CV_32S:
                 data = cv::Mat(1, audioFrame.rows, CV_32S);
-                for (unsigned int i = 0; i < audioFrame.rows; i++)
+                for (int i = 0; i < audioFrame.rows; i++)
                     data.at<int>(0,i) = audioFrame.at<int>(i,index-audioBaseIndex);
                 break;
             case CV_32F:
                 data = cv::Mat(1, audioFrame.rows, CV_32F);
-                for (unsigned int i = 0; i < audioFrame.rows; i++)
+                for (int i = 0; i < audioFrame.rows; i++)
                     data.at<float>(0,i) = audioFrame.at<float>(i,index-audioBaseIndex);
                 break;
             default:
@@ -1531,7 +1537,7 @@ bool CvCapture_MSMF::retrieveFrame(int index, cv::OutputArray frame)
                 break;
             }
             if (!data.empty())
-                data.copyTo(frame);   
+                data.copyTo(frame);
         }
         CV_TRACE_REGION_NEXT("unlock");
         if (lock2d)

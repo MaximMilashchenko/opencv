@@ -25,7 +25,7 @@ public:
         root("audio/"),
         fileName("test_audio"),
         params({ CAP_PROP_AUDIO_STREAM, 0,
-                 CAP_PROP_VIDEO_STREAM, -1, 
+                 CAP_PROP_VIDEO_STREAM, -1,
                  CAP_PROP_AUDIO_DATA_DEPTH, CV_16S }) {};
     void doTest()
     {
@@ -74,17 +74,18 @@ private:
     }
     void comparison()
     {
-        for(int i = 0; i < validData.size(); i++)
+        for(unsigned int i = 0; i < validData.size(); i++)
         {
             EXPECT_LE(fabs(validData[i] - fileData[i]), epsilon) << "sample index " << i;
         }
     }
 protected:
     const std::string format;
+    const double epsilon;
     const std::pair<std::string, int> backend;
     const std::string root;
     const std::string fileName;
-    const double epsilon;
+
     std::vector<int> params;
     std::vector<double> validData;
     std::vector<double> fileData;

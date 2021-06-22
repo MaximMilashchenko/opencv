@@ -8,7 +8,6 @@ using namespace std;
 
 int main(int, char**)
 {
-    bool status = true;
     Mat frame;
     vector<Mat> audioData;
     VideoCapture cap;
@@ -45,7 +44,7 @@ int main(int, char**)
         }
     }
     int numberOfSamles = 0;
-    for (const auto item : audioData)
+    for (auto item : audioData)
         numberOfSamles+=item.cols;
     cout << "Number of samples: " << numberOfSamles << endl;
 

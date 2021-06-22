@@ -31,7 +31,7 @@ int main(int argc, char** argv)
         return -1;
     }
 
-    const int audioBaseIndex = cap.get(CAP_PROP_AUDIO_BASE_INDEX);
+    const int audioBaseIndex = (int)cap.get(CAP_PROP_AUDIO_BASE_INDEX);
     cout << "CAP_PROP_AUDIO_DATA_DEPTH: " << depthToString((int)cap.get(CAP_PROP_AUDIO_DATA_DEPTH)) << endl;
     cout << "CAP_PROP_AUDIO_SAMPLES_PER_SECOND: " << cap.get(CAP_PROP_AUDIO_SAMPLES_PER_SECOND) << endl;
     cout << "CAP_PROP_AUDIO_TOTAL_CHANNELS: " << cap.get(CAP_PROP_AUDIO_TOTAL_CHANNELS) << endl;
@@ -57,7 +57,7 @@ int main(int argc, char** argv)
         else
         {
             int numberOfSamles = 0;
-            for (const auto item : audioData)
+            for (auto item : audioData)
                 numberOfSamles+=item.cols;
             cout << "Number of samples: " << numberOfSamles << endl;
             break;

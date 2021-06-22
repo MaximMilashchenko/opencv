@@ -14,7 +14,7 @@ const Param audio_params[] =
 class AudioTestFixture : public testing::TestWithParam <Param>
 {
 public:
-    AudioTestFixture(): 
+    AudioTestFixture():
         format(get<0>(GetParam())),
         epsilon(get<1>(GetParam())),
         videoType(get<2>(GetParam())),
@@ -26,7 +26,7 @@ public:
         root("audio/"),
         fileName("test_audio"),
         params({ CAP_PROP_AUDIO_STREAM, 0,
-                 CAP_PROP_VIDEO_STREAM, 0, 
+                 CAP_PROP_VIDEO_STREAM, 0,
                  CAP_PROP_AUDIO_DATA_DEPTH, CV_16S  }) {};
     void doTest()
     {
@@ -53,7 +53,7 @@ private:
         }
     }
     void getValidVideoData()
-    {   
+    {
         Mat img(height, width, videoType);
         for (int i = 0; i < numberOfFrames; ++i)
         {
@@ -89,7 +89,7 @@ private:
     }
     void comparisonAudio()
     {
-        for (int i = 0; i < validAudioData.size(); i++)
+        for (unsigned int i = 0; i < validAudioData.size(); i++)
         {
             EXPECT_LE(fabs(validAudioData[i] - audioData[i]), epsilon) << "sample index " << i;
         }
@@ -98,7 +98,7 @@ private:
     {
         ASSERT_EQ(validVideoData.size(), videoData.size());
         double minPsnrOriginal = 1000;
-        for (int i = 0; i < validVideoData.size(); i++)
+        for (unsigned int i = 0; i < validVideoData.size(); i++)
         {
             ASSERT_EQ(videoData[i].rows, validVideoData[i].rows) << "The dimension of the rows does not match. Frame index: " << i;
             ASSERT_EQ(videoData[i].cols, validVideoData[i].cols) << "The dimension of the cols does not match. Frame index: " << i;
@@ -110,16 +110,16 @@ private:
     }
 protected:
     const std::string format;
-    const std::pair<std::string, int> backend;
-    const std::string root;
-    const std::string fileName;
-
     const double epsilon;
     const int videoType;
     const int height;
     const int width;
     const int numberOfFrames;
     const double psnrThreshold;
+
+    const std::pair<std::string, int> backend;
+    const std::string root;
+    const std::string fileName;
 
     std::vector<Mat> validVideoData;
     std::vector<double> validAudioData;

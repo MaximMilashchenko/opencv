@@ -17,9 +17,8 @@ TEST(DISABLED_videoio_micro, basic)
     VideoCapture cap(0, cv::CAP_MSMF, params);
     ASSERT_TRUE(cap.isOpened());
 
-    int bitPerSample = cap.get(cv::CAP_PROP_AUDIO_DATA_DEPTH);
-    int samplesPerSecond = cap.get(cv::CAP_PROP_AUDIO_SAMPLES_PER_SECOND);
-    const int audio_base_index = cap.get(cv::CAP_PROP_AUDIO_BASE_INDEX);
+    int samplesPerSecond = (int)cap.get(cv::CAP_PROP_AUDIO_SAMPLES_PER_SECOND);
+    const int audio_base_index = (int)cap.get(cv::CAP_PROP_AUDIO_BASE_INDEX);
 
     const double cvTickFreq = cv::getTickFrequency();
     int64 sysTimePrev = cv::getTickCount();
@@ -32,9 +31,9 @@ TEST(DISABLED_videoio_micro, basic)
             sysTimeCurr = cv::getTickCount();
         }
     }
-    validSize = samplesPerSecond*((sysTimeCurr-sysTimePrev)/cvTickFreq);
-    cursize = cap.get(cv::CAP_PROP_AUDIO_POS);
-    ASSERT_LT(validSize- cursize, cursize*0.05);
+    validSize = samplesPerSecond*(int)((sysTimeCurr-sysTimePrev)/cvTickFreq);
+    cursize = (int)cap.get(cv::CAP_PROP_AUDIO_POS);
+    ASSERT_LT(validSize - cursize, cursize*0.05);
 }
 
 }} // namespace
