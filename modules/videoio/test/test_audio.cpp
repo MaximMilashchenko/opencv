@@ -18,7 +18,7 @@ const Param audio_params[] =
 class AudioTestFixture : public testing::TestWithParam <Param>
 {
 public:
-    AudioTestFixture(): 
+    AudioTestFixture():
         format(get<0>(GetParam())),
         epsilon(get<1>(GetParam())),
         backend(get<2>(GetParam())),
@@ -58,7 +58,7 @@ private:
         {
             if(cap.grab())
             {
-                cap.retrieve(frame, audioBaseIndex);
+                ASSERT_TRUE(cap.retrieve(frame, audioBaseIndex));
                 for(int i = 0; i < frame.cols; i++)
                 {
                     f = ((double) frame.at<signed short>(0,i)) / (double) 32768;

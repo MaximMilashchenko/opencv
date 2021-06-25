@@ -27,7 +27,7 @@ TEST(DISABLED_videoio_micro, basic)
     {
         if (cap.grab())
         {
-            cap.retrieve(frame, audio_base_index);
+            ASSERT_TRUE(cap.retrieve(frame, audio_base_index));
             sysTimeCurr = cv::getTickCount();
         }
     }

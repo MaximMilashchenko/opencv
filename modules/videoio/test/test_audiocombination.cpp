@@ -70,8 +70,8 @@ private:
         {
             if (cap.grab())
             {
-                cap.retrieve(videoFrame);
-                cap.retrieve(audioFrame, audioBaseIndex);
+                ASSERT_TRUE(cap.retrieve(videoFrame));
+                ASSERT_TRUE(cap.retrieve(audioFrame, audioBaseIndex));
                 if (!videoFrame.empty())
                     videoData.push_back(videoFrame);
                 for (int i = 0; i < audioFrame.cols; i++)

@@ -749,6 +749,8 @@ protected:
     unsigned int audioBaseIndex;
     int outputVideoFormat;
     int outputAudioFormat;
+    bool endOfVideoStream;
+    bool endOfAudioStream;
     bool convertFormat;
     MFTIME duration;
     LONGLONG frameStep;
@@ -770,16 +772,18 @@ CvCapture_MSMF::CvCapture_MSMF():
     D3DDev(NULL),
     D3DMgr(NULL),
 #endif
-    videoStream(0),
-    audioStream(-1),
-    device_status(false),
     videoFileSource(NULL),
     readCallback(NULL),
-    audioBaseIndex(1),
     dwVideoStreamIndex(0),
     dwAudioStreamIndex(0),
+    device_status(false),
+    videoStream(0),
+    audioStream(-1),
+    audioBaseIndex(1),
     outputVideoFormat(CV_CAP_MODE_BGR),
     outputAudioFormat(CV_16S),
+    endOfVideoStream(false),
+    endOfAudioStream(false),
     convertFormat(true),
     duration(0),
     frameStep(0),
@@ -1351,16 +1355,20 @@ bool CvCapture_MSMF::grabFrame()
                 }
                 else if (flags & MF_SOURCE_READERF_ENDOFSTREAM)
                 {
-                    if(dwStreamIndices[i] == dwVideoStreamIndex)
+                    if (dwStreamIndices[i] == dwVideoStreamIndex)
+                    {
                         sampleTime += frameStep;
+                        endOfVideoStream = true;
+                    }
+                    if (dwStreamIndices[i] == dwAudioStreamIndex)
+                    {
+                        endOfAudioStream = true;
+                    }
                     CV_LOG_DEBUG(NULL, "videoio(MSMF): End of stream detected");
                 }
                 else
                 {
-                    LONGLONG time = 0;
-                    if(dwStreamIndices[i] == dwAudioStreamIndex)
-                        mediaSamples[i]->GetSampleTime(&time);
-                    if(dwStreamIndices[i] == dwVideoStreamIndex)
+                    if (dwStreamIndices[i] == dwVideoStreamIndex)
                         sampleTime += frameStep;
                     if (flags & MF_SOURCE_READERF_NEWSTREAM)
                     {
@@ -1393,16 +1401,38 @@ bool CvCapture_MSMF::grabFrame()
 bool CvCapture_MSMF::retrieveFrame(int index, cv::OutputArray frame)
 {
     CV_TRACE_FUNCTION();
-    if (index < 0)
-        return false;
     do
     {
+        if (index < 0)
+            break;
         _ComPtr<IMFMediaBuffer> buf = NULL;
         _ComPtr<IMFSample> Sample = NULL;
-        if (!device_status)
-            Sample = ((unsigned int)index < audioBaseIndex) ? mediaSamples[0] : (videoStream == -1) ? mediaSamples[0] : mediaSamples[1];
+        if ((unsigned int)index < audioBaseIndex)
+        {
+            if (endOfVideoStream)
+            {
+                frame.release();
+                return true;
+            }
+            if (videoStream == -1)
+                break;
+            else
+                Sample = mediaSamples[0];
+        }
         else
-            Sample = mediaSamples[0];
+        {
+            if (endOfAudioStream)
+            {
+                frame.release();
+                return true;
+            }
+            if (audioStream == -1)
+                break;
+            else if (videoStream == -1)
+               Sample = mediaSamples[0];
+            else
+                Sample = mediaSamples[1];
+        }
         if (!Sample)
             break;
         CV_TRACE_REGION("get_contiguous_buffer");
