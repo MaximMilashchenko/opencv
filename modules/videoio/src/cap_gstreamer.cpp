@@ -1086,6 +1086,12 @@ bool GStreamerCapture::open(const String &filename_, const cv::VideoCaptureParam
     }
 
     const gchar* filename = filename_.c_str();
+    const char *ext_ = strrchr(filename, '.');
+    if (!ext_ || ext_ == filename)
+        return NULL;
+    ext_ += 1;
+    std::string ext(ext_);
+    ext = toLowerCase(ext);
 
     bool file = false;
     bool manualpipeline = false;
@@ -1094,6 +1100,9 @@ bool GStreamerCapture::open(const String &filename_, const cv::VideoCaptureParam
     GSafePtr<GstElement> color;
     GstStateChangeReturn status;
 
+    GSafePtr<GstElement> parser;
+    GSafePtr<GstElement> decoder;
+    GSafePtr<GstElement> audiobuffersplit;
     GSafePtr<GstElement> convert;
     GSafePtr<GstElement> resample;
 
@@ -1162,9 +1171,18 @@ bool GStreamerCapture::open(const String &filename_, const cv::VideoCaptureParam
         }
         else if (audioStream >= 0)
         {
-            uridecodebin.reset(gst_element_factory_make("uridecodebin", NULL));
-            CV_Assert(uridecodebin);
-            g_object_set(G_OBJECT(uridecodebin.get()), "uri", uri.get(), NULL);
+            if (ext == "mp3" || ext == "aac" || ext == "flac")
+            {
+                uridecodebin.reset(gst_element_factory_make("filesrc", NULL));
+                CV_Assert(uridecodebin);
+                g_object_set(G_OBJECT(uridecodebin.get()), "location", filename, NULL);
+            }
+            else
+            {
+                uridecodebin.reset(gst_element_factory_make("uridecodebin", NULL));
+                CV_Assert(uridecodebin);
+                g_object_set(G_OBJECT(uridecodebin.get()), "uri", uri.get(), NULL);
+            }
         }
 
         if (!uridecodebin)
@@ -1268,17 +1286,52 @@ bool GStreamerCapture::open(const String &filename_, const cv::VideoCaptureParam
         }
         else if (audioStream >= 0)
         {
+            audiobuffersplit.reset(gst_element_factory_make("audiobuffersplit", NULL));
+            //g_object_set(audiobuffersplit, "output-buffer-duration", 1, 100, NULL);
+            //g_object_set(audiobuffersplit, "output-buffer-size", 2048, NULL);
+            //g_object_set(audiobuffersplit, "strict-buffer-size", true, NULL);
+            
             convert.reset(gst_element_factory_make("audioconvert", NULL));
             resample.reset(gst_element_factory_make("audioresample", NULL));
 
-            gst_bin_add_many (GST_BIN (pipeline.get()), uridecodebin.get(), convert.get(), resample.get(), sink.get(), NULL);
-            if (!gst_element_link_many (convert.get(), resample.get(), sink.get(), NULL))
+            if (ext == "mp3")
             {
-                CV_WARN("GStreamer(audio): cannot link convert -> resample -> sink");
-                pipeline.release();
-                return false;
+                parser.reset(gst_element_factory_make("mpegaudioparse", NULL));
+                decoder.reset(gst_element_factory_make("mpg123audiodec", NULL));
             }
-            g_signal_connect (uridecodebin, "pad-added", G_CALLBACK (newPad), convert.get());
+            if (ext == "aac")
+            {
+                parser.reset(gst_element_factory_make("aacparse", NULL));
+                decoder.reset(gst_element_factory_make("avdec_aac", NULL));
+            }
+            if (ext == "flac")
+            {
+                parser.reset(gst_element_factory_make("flacparse", NULL));
+                decoder.reset(gst_element_factory_make("avdec_flac", NULL));
+            }
+            
+            if (ext == "mp3" || ext == "aac" || ext == "flac" || ext == "alac")
+            {
+                gst_bin_add_many (GST_BIN (pipeline.get()), uridecodebin.get(), parser.get(), decoder.get(), resample.get(), convert.get(), sink.get(), NULL);
+                if (!gst_element_link_many (uridecodebin.get(), parser.get(), decoder.get(), resample.get(), convert.get(), sink.get(), NULL))
+                {
+                    CV_WARN("GStreamer(audio): cannot link convert -> resample -> sink");
+                    pipeline.release();
+                    return false;
+                }
+                g_signal_connect (parser, "pad-added", G_CALLBACK (newPad), decoder.get());
+            }
+            else
+            {
+                gst_bin_add_many (GST_BIN (pipeline.get()), uridecodebin.get(), resample.get(), convert.get(), sink.get(), NULL);
+                if (!gst_element_link_many (convert.get(), resample.get(), sink.get(), NULL))
+                {
+                    CV_WARN("GStreamer(audio): cannot link convert -> resample -> sink");
+                    pipeline.release();
+                    return false;
+                }
+                g_signal_connect (uridecodebin, "pad-added", G_CALLBACK (newPad), convert.get());
+            }
         }
     }
 

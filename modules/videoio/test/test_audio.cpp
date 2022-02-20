@@ -6,10 +6,10 @@
 
 namespace opencv_test { namespace {
 
-//file name, number of audio channels, epsilon, video type, weight, height, number of frame, number of audio samples, fps, psnr Threshold, backend
-typedef std::tuple<std::string, int, double, int, int, int, int, int, int, double, VideoCaptureAPIs> paramCombination;
-//file name, number of audio channels, number of audio samples, epsilon, backend
-typedef std::tuple<std::string, int, int, double, VideoCaptureAPIs> param;
+// 0-file name, 1-number of audio channels, 2-epsilon, 3-video type, 4-weight, 5-height, 6-number of frame, 7-number of audio samples, 8-shift start(in samples), 9-shift end(in samples), 10-fps, 11-psnr Threshold, 12-backend
+typedef std::tuple<std::string, int, double, int, int, int, int, int, int, int, int, double, VideoCaptureAPIs> paramCombination;
+// 0-file name, 1-number of audio channels, 2-number of audio samples, 3-shift start(in samples), 4-shift end(in samples), 5-epsilon, 6-backend
+typedef std::tuple<std::string, int, int, int, int, double, VideoCaptureAPIs> param;
 
 class AudioBaseTest
 {
@@ -23,7 +23,7 @@ protected:
         for (int nCh = 0; nCh < expectedNumAudioCh; nCh++)
         {
             value = 0;
-            for(unsigned int i = 0; i < numberOfSamples; i++)
+            for(unsigned int i = 0; i < numberOfSamplesForCompare; i++)
             {
                 if (i != 0 && i % 44100 == 0)
                     value = 0;
@@ -40,7 +40,9 @@ protected:
         for (unsigned int nCh = 0; nCh < audioData.size(); nCh++)
         {
             ASSERT_EQ(numberOfSamples, audioData[nCh].size()) << "nCh=" << nCh;
-            for (unsigned int i = 0; i < numberOfSamples; i++)
+            audioData[nCh].erase(audioData[nCh].begin(), audioData[nCh].begin() + shiftStart);
+            audioData[nCh].erase(audioData[nCh].end() - shiftEnd, audioData[nCh].end());
+            for (unsigned int i = 0; i < numberOfSamplesForCompare; i++)
             {
                 EXPECT_NEAR(validAudioData[nCh][i], audioData[nCh][i], epsilon) << "sample index=" << i << " nCh=" << nCh;
             }
@@ -49,6 +51,9 @@ protected:
 protected:
     int expectedNumAudioCh;
     unsigned int numberOfSamples;
+    int shiftStart;
+    int shiftEnd;
+    unsigned int numberOfSamplesForCompare;
     double epsilon;
     VideoCaptureAPIs backend;
     std::string root;
@@ -70,8 +75,11 @@ public:
         fileName = get<0>(GetParam());
         expectedNumAudioCh = get<1>(GetParam());
         numberOfSamples = get<2>(GetParam());
-        epsilon = get<3>(GetParam());
-        backend = get<4>(GetParam());
+        shiftStart = get<3>(GetParam());
+        shiftEnd = get<4>(GetParam());
+        numberOfSamplesForCompare = numberOfSamples - shiftStart - shiftEnd;
+        epsilon = get<5>(GetParam());
+        backend = get<6>(GetParam());
         root = "audio/";
         params = {  CAP_PROP_AUDIO_STREAM, 0,
                     CAP_PROP_VIDEO_STREAM, -1,
@@ -112,13 +120,16 @@ public:
 const param audioParams[] =
 {
 #ifdef _WIN32
-    param("test_audio.wav", 1, 132300, 0.0001, cv::CAP_MSMF),
-    param("test_mono_audio.mp3", 1, 133104, 0.12, cv::CAP_MSMF),
-    param("test_stereo_audio.mp3", 2, 133104, 0.12, cv::CAP_MSMF),
-    param("test_audio.mp4", 1, 133104, 0.15, cv::CAP_MSMF),
+    param("test_audio.wav", 1, 132300, 0, 0, 0.0001, cv::CAP_MSMF),
+    param("test_mono_audio.mp3", 1, 133104, 0, 0, 0.12, cv::CAP_MSMF),
+    param("test_stereo_audio.mp3", 2, 133104, 0, 0, 0.12, cv::CAP_MSMF),
+    param("test_audio.mp4", 1, 133104, 0, 0, 0.15, cv::CAP_MSMF),
 #endif
-    param("test_audio.wav", 1, 132300, 0.0001, cv::CAP_GSTREAMER),
-    param("test_audio.mp4", 1, 132522, 0.15, cv::CAP_GSTREAMER),
+    param("test_audio.wav", 1, 132300, 0, 0, 0.0001, cv::CAP_GSTREAMER),
+    param("test_mono_audio.mp3", 1, 133632, 1106, 150, 0.02, cv::CAP_GSTREAMER),
+    param("test_stereo_audio.mp3", 2, 133632, 1106, 150, 0.02, cv::CAP_GSTREAMER),
+    param("test_audio.aac", 1, 134144, 1000, 800, 0.06, cv::CAP_GSTREAMER),
+    param("test_audio.mp4", 1, 132522, 0, 0, 0.05, cv::CAP_GSTREAMER),
 };
 
 class Audio : public AudioTestFixture{};
@@ -141,14 +152,16 @@ public:
         height(get<4>(GetParam())),
         width(get<5>(GetParam())),
         numberOfFrames(get<6>(GetParam())),
-        fps(get<8>(GetParam())),
-        psnrThreshold(get<9>(GetParam()))
+        fps(get<10>(GetParam())),
+        psnrThreshold(get<11>(GetParam()))
         {
             fileName = get<0>(GetParam());
             expectedNumAudioCh = get<1>(GetParam());
             numberOfSamples = get<7>(GetParam());
+            shiftStart = get<8>(GetParam());
+            shiftEnd = get<9>(GetParam());
             epsilon = get<2>(GetParam());
-            backend = get<10>(GetParam());
+            backend = get<12>(GetParam());
             root = "audio/";
             params = {  CAP_PROP_AUDIO_STREAM, 0,
                         CAP_PROP_VIDEO_STREAM, 0,
@@ -267,10 +280,10 @@ TEST_P(Media, audio)
 const paramCombination mediaParams[] =
 {
 #ifdef _WIN32
-    paramCombination("test_audio.mp4", 1, 0.15, CV_8UC3, 240, 320, 90, 131819, 30, 30., cv::CAP_MSMF)
+    paramCombination("test_audio.mp4", 1, 0.15, CV_8UC3, 240, 320, 90, 131819, 0, 0, 30, 30., cv::CAP_MSMF)
 #if 0
     // https://filesamples.com/samples/video/mp4/sample_960x400_ocean_with_audio.mp4
-    , paramCombination("sample_960x400_ocean_with_audio.mp4", 2, -1/*eplsilon*/, CV_8UC3, 400, 960, 1116, 2056588, 30, 30., cv::CAP_MSMF)
+    , paramCombination("sample_960x400_ocean_with_audio.mp4", 2, -1/*eplsilon*/, CV_8UC3, 400, 960, 1116, 2056588, 0, 0, 30, 30., cv::CAP_MSMF)
 #endif
 #endif  // _WIN32
 };
