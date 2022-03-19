@@ -126,8 +126,8 @@ const param audioParams[] =
     param("test_audio.mp4", 1, 133104, 0, 0, 0.15, cv::CAP_MSMF),
 #endif
     param("test_audio.wav", 1, 132300, 0, 0, 0.0001, cv::CAP_GSTREAMER),
-    param("test_mono_audio.mp3", 1, 133632, 1106, 150, 0.02, cv::CAP_GSTREAMER),
-    param("test_stereo_audio.mp3", 2, 133632, 1106, 150, 0.02, cv::CAP_GSTREAMER),
+    param("test_mono_audio.mp3", 1, 133632, 1106, 150, 0.06, cv::CAP_GSTREAMER),
+    param("test_stereo_audio.mp3", 2, 133632, 1106, 150, 0.02, cv::CAP_GSTREAMER),//133632 1106 150 0.02
     param("test_audio.aac", 1, 134144, 1000, 800, 0.06, cv::CAP_GSTREAMER),
     param("test_audio.mp4", 1, 132522, 0, 0, 0.05, cv::CAP_GSTREAMER),
 };

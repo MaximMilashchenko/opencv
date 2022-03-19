@@ -48,7 +48,7 @@ int main(int argc, char** argv)
             {
                 cap.retrieve(frame, audioBaseIndex+nCh);
                 //std::cout << frame << std::endl;
-                std::string::size_type bpos = file.find('/home/max/workSpace/GstreamerPipeline/opencv_extra/testdata/highgui/audio/');
+                /*std::string::size_type bpos = file.find('/home/max/workSpace/GstreamerPipeline/opencv_extra/testdata/highgui/audio/');
                 std::string::size_type epos = file.find('.');
                 std::string file_ = file.substr (74, epos);
                 std::string str = "/home/max/workSpace/audiomeasure/" + file_ + ".txt";
@@ -59,7 +59,7 @@ int main(int argc, char** argv)
                     {
                         //out << frame.at <signed short> (0, i) << std::endl;
                     }
-                } 
+                } */
                 audioData[nCh].push_back(frame);
                 numberOfSamples+=frame.cols;
             }
